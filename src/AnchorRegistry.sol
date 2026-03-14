@@ -1,23 +1,62 @@
 // SPDX-License-Identifier: BUSL-1.1
-// Change Date: March 12, 2028
+// Change Date:    March 12, 2028
 // Change License: Apache-2.0
-// Licensor: Ian Moore (icmoore)
+// Licensor:       Ian Moore (icmoore)
 
 pragma solidity ^0.8.24;
 
-/// @title AnchorRegistry
-/// @notice On-chain registry of artifact provenance anchors
-/// @dev Immutable record of what existed, when, and who registered it
+/// @title  AnchorRegistry
+/// @notice On-chain registry of artifact provenance anchors.
+///         Immutable record of what existed, when, and who registered it.
+/// @dev    Deployed once on Base (Ethereum L2). Cannot be modified post-deployment.
+///
+///         Fifteen artifact types in four logical groups:
+///
+///         CONTENT (0-7):    CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST
+///                           What creators make. Active at launch. onlyOperator.
+///
+///         GATED (8-9):      LEGAL, ENTITY
+///                           Suppressed at launch. Separate operator gates.
+///                           LEGAL opens in V2-V3 with document verification.
+///                           ENTITY opens in V2 with domain verification.
+///
+///         SELF-SERVICE (10): RETRACTION
+///                           Owner-initiated. Active at launch. Operator submits
+///                           on behalf of creator after ownership token verification.
+///
+///         DISPUTE (11-13):  DISPUTE, VOID, AFFIRMED
+///                           AnchorRegistry operator-only. Active at launch.
+///                           DISPUTE: soft flag, anchor under review.
+///                           VOID: hard finding, subtree condemned, cascades down.
+///                           AFFIRMED: exoneration, dispute resolved.
+///
+///         CATCH-ALL (14):   OTHER
+///
+///         Three access gates:
+///         onlyOperator      — types 0-7, 10-14
+///         onlyLegalOperator — type 8  (no operators added at deployment)
+///         onlyEntityOperator— type 9  (no operators added at deployment)
 
 contract AnchorRegistry {
 
-    // -------------------------------------------------------------------------
-    // Access Control Storage
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // ACCESS CONTROL STORAGE
+    // =========================================================================
 
     address public owner;
     address public recoveryAddress;
+
+    /// @notice Standard operators — content, retraction, dispute, and other types.
+    ///         Can register types 0-7, 10-14. Cannot call registerLegal or registerEntity.
     mapping(address => bool) public operators;
+
+    /// @notice Legal operators — LEGAL registration only (type 8).
+    ///         Not added at deployment. Opens in V2-V3 with document verification.
+    mapping(address => bool) public legalOperators;
+
+    /// @notice Entity operators — ENTITY registration only (type 9).
+    ///         Not added at deployment. Opens in V2 with domain verification.
+    mapping(address => bool) public entityOperators;
 
     uint256 public constant RECOVERY_DELAY   = 7 days;
     uint256 public constant RECOVERY_LOCKOUT = 7 days;
@@ -25,47 +64,68 @@ contract AnchorRegistry {
     uint256 public recoveryLockoutUntil;
     address public pendingOwner;
 
-    // -------------------------------------------------------------------------
-    // Access Control Events
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // ACCESS CONTROL EVENTS
+    // =========================================================================
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event OperatorAdded(address indexed operator);
     event OperatorRemoved(address indexed operator);
+    event LegalOperatorAdded(address indexed operator);
+    event LegalOperatorRemoved(address indexed operator);
+    event EntityOperatorAdded(address indexed operator);
+    event EntityOperatorRemoved(address indexed operator);
     event RecoveryInitiated(address indexed recoveryAddress, address indexed pendingOwner);
     event RecoveryExecuted(address indexed newOwner);
     event RecoveryCancelled();
     event RecoveryAddressUpdated(address indexed newRecoveryAddress);
 
-    // -------------------------------------------------------------------------
-    // Access Control Errors
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // ACCESS CONTROL ERRORS
+    // =========================================================================
 
     error NotOwner();
     error NotOperator();
+    error NotLegalOperator();
+    error NotEntityOperator();
     error NotRecoveryAddress();
     error RecoveryNotInitiated();
     error RecoveryDelayNotMet();
     error RecoveryLockedOut();
     error ZeroAddress();
 
-    // -------------------------------------------------------------------------
-    // Access Control Modifiers
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // ACCESS CONTROL MODIFIERS
+    // =========================================================================
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
         _;
     }
 
+    /// @notice Gate for standard registration (types 0-7, 10-14).
     modifier onlyOperator() {
         if (!operators[msg.sender]) revert NotOperator();
         _;
     }
 
-    // -------------------------------------------------------------------------
-    // Constructor
-    // -------------------------------------------------------------------------
+    /// @notice Gate for LEGAL registration (type 8). No operators added at launch.
+    ///         Owner calls addLegalOperator() to activate in V2-V3.
+    modifier onlyLegalOperator() {
+        if (!legalOperators[msg.sender]) revert NotLegalOperator();
+        _;
+    }
+
+    /// @notice Gate for ENTITY registration (type 9). No operators added at launch.
+    ///         Owner calls addEntityOperator() to activate in V2.
+    modifier onlyEntityOperator() {
+        if (!entityOperators[msg.sender]) revert NotEntityOperator();
+        _;
+    }
+
+    // =========================================================================
+    // CONSTRUCTOR
+    // =========================================================================
 
     constructor(address _recoveryAddress) {
         if (_recoveryAddress == address(0)) revert ZeroAddress();
@@ -74,9 +134,9 @@ contract AnchorRegistry {
         emit OwnershipTransferred(address(0), msg.sender);
     }
 
-    // -------------------------------------------------------------------------
-    // Governance Functions
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // GOVERNANCE FUNCTIONS
+    // =========================================================================
 
     function addOperator(address op) external onlyOwner {
         if (op == address(0)) revert ZeroAddress();
@@ -89,15 +149,45 @@ contract AnchorRegistry {
         emit OperatorRemoved(op);
     }
 
+    /// @notice Add a legal operator. Opens LEGAL registration (type 8).
+    ///         Only call when document verification infrastructure is ready.
+    ///         Legal operator is a cold wallet — LEGAL registrations are rare,
+    ///         deliberate, and high-consequence.
+    function addLegalOperator(address op) external onlyOwner {
+        if (op == address(0)) revert ZeroAddress();
+        legalOperators[op] = true;
+        emit LegalOperatorAdded(op);
+    }
+
+    function removeLegalOperator(address op) external onlyOwner {
+        legalOperators[op] = false;
+        emit LegalOperatorRemoved(op);
+    }
+
+    /// @notice Add an entity operator. Opens ENTITY registration (type 9).
+    ///         Only call when domain verification infrastructure is ready.
+    ///         Entity operator is a cold wallet — ENTITY registrations are rare,
+    ///         deliberate, and high-consequence.
+    function addEntityOperator(address op) external onlyOwner {
+        if (op == address(0)) revert ZeroAddress();
+        entityOperators[op] = true;
+        emit EntityOperatorAdded(op);
+    }
+
+    function removeEntityOperator(address op) external onlyOwner {
+        entityOperators[op] = false;
+        emit EntityOperatorRemoved(op);
+    }
+
     function transferOwnership(address newOwner) external onlyOwner {
         if (newOwner == address(0)) revert ZeroAddress();
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
     }
 
-    // -------------------------------------------------------------------------
-    // Recovery Functions
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // RECOVERY FUNCTIONS
+    // =========================================================================
 
     function initiateRecovery(address _pendingOwner) external {
         if (msg.sender != recoveryAddress)          revert NotRecoveryAddress();
@@ -109,9 +199,9 @@ contract AnchorRegistry {
     }
 
     function executeRecovery() external {
-        if (msg.sender != recoveryAddress)                          revert NotRecoveryAddress();
-        if (recoveryInitiatedAt == 0)                               revert RecoveryNotInitiated();
-        if (block.timestamp < recoveryInitiatedAt + RECOVERY_DELAY) revert RecoveryDelayNotMet();
+        if (msg.sender != recoveryAddress)                           revert NotRecoveryAddress();
+        if (recoveryInitiatedAt == 0)                                revert RecoveryNotInitiated();
+        if (block.timestamp < recoveryInitiatedAt + RECOVERY_DELAY)  revert RecoveryDelayNotMet();
         emit OwnershipTransferred(owner, pendingOwner);
         owner               = pendingOwner;
         pendingOwner        = address(0);
@@ -133,74 +223,228 @@ contract AnchorRegistry {
         emit RecoveryAddressUpdated(_newRecovery);
     }
 
-    // -------------------------------------------------------------------------
-    // Artifact Types
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // ARTIFACT TYPES
+    // =========================================================================
 
+    /// @notice Fifteen artifact types in four logical groups.
+    ///
+    ///         CONTENT (0-7)     — what creators make. Active at launch.
+    ///         GATED (8-9)       — suppressed. Separate operator gates.
+    ///         SELF-SERVICE (10) — owner-initiated retraction. Active at launch.
+    ///         DISPUTE (11-13)   — AnchorRegistry authority. Active at launch.
+    ///         CATCH-ALL (14)    — everything else. Active at launch.
     enum ArtifactType {
-        CODE,       // repos, packages, commits, scripts
-        RESEARCH,   // papers, whitepapers, preprints, theses
-        DATA,       // training data, benchmarks, databases
-        MODEL,      // AI models, weights, checkpoints
-        AGENT,      // AI agents, bots, assistants
-        MEDIA,      // video, audio, images, photography
-        TEXT,       // blogs, articles, books, essays
-        POST,       // tweets, reddit, social
-        LEGAL,      // contracts, filings, disclosures, patents
-        PROOF,      // ZK proofs, cryptographic proofs
-        OTHER       // catch all
+        // ── CONTENT (0-7) ─────────────────────────────────────────────────
+        CODE,        // 0  repos, packages, commits, scripts
+        RESEARCH,    // 1  papers, whitepapers, preprints, theses
+        DATA,        // 2  training data, benchmarks, databases
+        MODEL,       // 3  AI models, weights, checkpoints
+        AGENT,       // 4  AI agents, bots, assistants
+        MEDIA,       // 5  video, audio, images, photography
+        TEXT,        // 6  blogs, articles, books, essays
+        POST,        // 7  tweets, reddit, social
+
+        // ── GATED (8-9) ───────────────────────────────────────────────────
+        LEGAL,       // 8  SUPPRESSED — contracts, patents, filings (V2-V3)
+                     //    onlyLegalOperator. No operators at deployment.
+        ENTITY,      // 9  SUPPRESSED — persons, companies, institutions (V2)
+                     //    onlyEntityOperator. No operators at deployment.
+
+        // ── SELF-SERVICE (10) ─────────────────────────────────────────────
+        RETRACTION,  // 10 Owner-initiated. Operator submits on behalf of creator
+                     //    after off-chain ownership token verification.
+                     //    Creator is retracting their own work.
+                     //    Not a finding of fraud — owner's autonomous choice.
+
+        // ── DISPUTE (11-13) ───────────────────────────────────────────────
+        DISPUTE,     // 11 Soft flag. Attached to specific node under review.
+                     //    Marks anchor CONTESTED. Provisional. Reversible.
+                     //    onlyOperator.
+        VOID,        // 12 Hard finding. Attached to parent of fraud origin.
+                     //    Cascades DOWN. Does not cascade up.
+                     //    Permanent unless AFFIRMED via appeal.
+                     //    onlyOperator.
+        AFFIRMED,    // 13 Exoneration. Attached to DISPUTE (found legitimate)
+                     //    or VOID (appeal upheld, tree reinstated).
+                     //    onlyOperator.
+
+        // ── CATCH-ALL (14) ────────────────────────────────────────────────
+        OTHER        // 14 catch all
     }
 
-    // -------------------------------------------------------------------------
-    // Base Struct
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // BASE STRUCT
+    // =========================================================================
 
     struct AnchorBase {
         ArtifactType artifactType;
-        string manifestHash;    // SHA256 of SPDX or DAPX manifest
-        string parentHash;      // AR-ID of parent anchor, empty if root
-        string descriptor;      // human readable e.g. ICMOORE-2026-UNISWAPPY
+        string manifestHash;  // SHA256 of SPDX or DAPX manifest
+        string parentHash;    // AR-ID of parent anchor, empty if root
+        string descriptor;    // human-readable e.g. ICMOORE-2026-UNISWAPPY
     }
 
-    // -------------------------------------------------------------------------
-    // Child Structs
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // CONTENT STRUCTS — types 0-7
+    // =========================================================================
 
     struct CodeAnchor     { AnchorBase base; string gitHash;      string license; string url; }
     struct ResearchAnchor { AnchorBase base; string doi;          string url; }
-    struct DataAnchor     { AnchorBase base; string dataVersion; string url; }
+    struct DataAnchor     { AnchorBase base; string dataVersion;  string url; }
     struct ModelAnchor    { AnchorBase base; string modelVersion; string url; }
-    struct AgentAnchor    { AnchorBase base; string agentVersion;  string url; }
+    struct AgentAnchor    { AnchorBase base; string agentVersion; string url; }
     struct MediaAnchor    { AnchorBase base; string mediaType;    string url; }
     struct TextAnchor     { AnchorBase base; string url; }
     struct PostAnchor     { AnchorBase base; string platform;     string url; }
-    struct LegalAnchor    { AnchorBase base; string docType;       string url; }
-    struct ProofAnchor    { AnchorBase base; string proofType; }
-    struct OtherAnchor    { AnchorBase base; string kind; string platform; string url; string value; }
 
-    // -------------------------------------------------------------------------
-    // Storage
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // GATED STRUCTS — types 8-9 (suppressed at launch)
+    // =========================================================================
 
-    mapping(string => CodeAnchor)     public codeAnchors;
-    mapping(string => ResearchAnchor) public researchAnchors;
-    mapping(string => DataAnchor)     public dataAnchors;
-    mapping(string => ModelAnchor)    public modelAnchors;
-    mapping(string => AgentAnchor)    public agentAnchors;
-    mapping(string => MediaAnchor)    public mediaAnchors;
-    mapping(string => TextAnchor)     public textAnchors;
-    mapping(string => PostAnchor)     public postAnchors;
-    mapping(string => LegalAnchor)    public legalAnchors;
-    mapping(string => ProofAnchor)    public proofAnchors;
-    mapping(string => OtherAnchor)    public otherAnchors;
+    /// @notice SUPPRESSED. Contracts, patents, filings, disclosures.
+    ///         Requires document verification infrastructure.
+    ///         Opens in V2-V3 when onlyLegalOperator operators are added.
+    struct LegalAnchor {
+        AnchorBase base;
+        string docType;  // PATENT_APPLICATION | CONTRACT | COURT_FILING | DISCLOSURE
+        string url;
+    }
 
-    // track registered AR-IDs to prevent collisions
+    /// @notice SUPPRESSED. Persons, companies, institutions, governments, AI systems.
+    ///         Requires domain verification infrastructure (DNS_TXT, GitHub, ORCID).
+    ///         Opens in V2 when onlyEntityOperator operators are added.
+    ///         claimedRoots stored off-chain in Supabase via canonicalUrl —
+    ///         immutable parentHash on V1 anchors cannot be modified retroactively,
+    ///         so entity-to-tree linkage is maintained in the resolution layer.
+    struct EntityAnchor {
+        AnchorBase base;
+        string entityType;          // PERSON | COMPANY | INSTITUTION | GOVERNMENT
+                                    // AI_SYSTEM | RESEARCH_GROUP | PROTOCOL
+        string entityDomain;        // canonical domain e.g. icmoore.com
+        string verificationMethod;  // DNS_TXT | GITHUB | ORCID | EMAIL
+        string verificationProof;   // the specific proof string used
+        string canonicalUrl;        // anchorregistry.ai/canonical/[entity-id]
+        string documentHash;        // SHA256 of canonical document
+    }
+
+    // =========================================================================
+    // SELF-SERVICE STRUCT — type 10
+    // =========================================================================
+
+    /// @notice Owner-initiated retraction. The creator is marking their own
+    ///         anchor as retracted. Not a finding of fraud — an autonomous
+    ///         choice by the registrant.
+    ///         Operator submits on behalf of creator after off-chain ownership
+    ///         token verification. The on-chain record cannot be deleted —
+    ///         RETRACTION is a permanent annotation of the creator's intent.
+    ///         replacedBy: optional AR-ID of a replacement anchor.
+    ///         e.g. "I retracted v1.0 and registered v2.0 instead."
+    struct RetractionAnchor {
+        AnchorBase base;
+        string targetArId;   // the anchor being retracted
+        string reason;       // optional, owner-provided free text
+        string replacedBy;   // optional AR-ID of replacement anchor
+    }
+
+    // =========================================================================
+    // DISPUTE STRUCTS — types 11-13
+    // =========================================================================
+
+    /// @notice Soft flag. Attached to the specific node under review.
+    ///         Marks the anchor CONTESTED pending investigation.
+    ///         Only AnchorRegistry operators may attach.
+    ///         parentHash in base should reference the disputed anchor
+    ///         to create an on-chain link in the tree.
+    struct DisputeAnchor {
+        AnchorBase base;
+        string targetArId;   // the AR-ID of the anchor being disputed
+        string disputeType;  // MALICIOUS_TREE | IMPERSONATION | FALSE_AUTHORSHIP
+                             // DEFAMATORY | OTHER
+        string evidenceUrl;  // anchorregistry.com/disputes/[dispute-ar-id]
+    }
+
+    /// @notice Hard finding. Attached to the PARENT of the fraud origin.
+    ///         Cascades DOWN — all descendants are condemned (VOID).
+    ///         Does NOT cascade up — ancestors and siblings are unaffected.
+    ///         Cascade is enforced off-chain by the resolution endpoint.
+    ///         Only AnchorRegistry operators may attach.
+    ///         A DISPUTE anchor must have preceded this finding (disputeArId required).
+    struct VoidAnchor {
+        AnchorBase base;
+        string targetArId;   // the parent AR-ID being condemned
+        string disputeArId;  // the DISPUTE anchor that preceded this finding
+        string findingUrl;   // anchorregistry.com/disputes/[void-ar-id]
+        string evidence;     // brief on-chain evidence summary
+    }
+
+    /// @notice Exoneration. Attached to a DISPUTE or VOID anchor.
+    ///         If attached to DISPUTE: anchor was investigated, found legitimate.
+    ///         If attached to VOID: appeal upheld, tree reinstated.
+    ///         affirmedBy: INVESTIGATION or APPEAL.
+    ///         Only AnchorRegistry operators may attach.
+    ///         A tree that carries an AFFIRMED node is more trustworthy than
+    ///         one that was never questioned — it was actively investigated
+    ///         and found legitimate.
+    struct AffirmedAnchor {
+        AnchorBase base;
+        string targetArId;   // the DISPUTE or VOID AR-ID being affirmed
+        string affirmedBy;   // INVESTIGATION | APPEAL
+        string findingUrl;   // anchorregistry.com/disputes/[affirmed-ar-id]
+    }
+
+    // =========================================================================
+    // CATCH-ALL STRUCT — type 14
+    // =========================================================================
+
+    struct OtherAnchor {
+        AnchorBase base;
+        string kind;
+        string platform;
+        string url;
+        string value;
+    }
+
+    // =========================================================================
+    // STORAGE
+    // =========================================================================
+
+    // Content anchors (types 0-7)
+    mapping(string => CodeAnchor)       public codeAnchors;
+    mapping(string => ResearchAnchor)   public researchAnchors;
+    mapping(string => DataAnchor)       public dataAnchors;
+    mapping(string => ModelAnchor)      public modelAnchors;
+    mapping(string => AgentAnchor)      public agentAnchors;
+    mapping(string => MediaAnchor)      public mediaAnchors;
+    mapping(string => TextAnchor)       public textAnchors;
+    mapping(string => PostAnchor)       public postAnchors;
+
+    // Gated anchors (types 8-9) — structs exist, register functions are gated
+    mapping(string => LegalAnchor)      public legalAnchors;
+    mapping(string => EntityAnchor)     public entityAnchors;
+
+    // Self-service anchors (type 10)
+    mapping(string => RetractionAnchor) public retractionAnchors;
+
+    // Dispute anchors (types 11-13)
+    mapping(string => DisputeAnchor)    public disputeAnchors;
+    mapping(string => VoidAnchor)       public voidAnchors;
+    mapping(string => AffirmedAnchor)   public affirmedAnchors;
+
+    // Catch-all anchors (type 14)
+    mapping(string => OtherAnchor)      public otherAnchors;
+
+    /// @notice Global AR-ID collision prevention. Once registered, an AR-ID
+    ///         cannot be reused by any anchor type.
     mapping(string => bool) public registered;
 
-    // -------------------------------------------------------------------------
-    // Events
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // EVENTS
+    // =========================================================================
 
+    /// @notice Emitted on every successful anchor registration of any type.
+    ///         Contains all fields needed to reconstruct the full registry
+    ///         from Ethereum event logs alone. The contract address is the
+    ///         only input required for complete off-chain recovery.
     event Anchored(
         string  indexed arId,
         address indexed registrant,
@@ -210,18 +454,51 @@ contract AnchorRegistry {
         string          parentHash
     );
 
-    // -------------------------------------------------------------------------
-    // Errors
-    // -------------------------------------------------------------------------
+    /// @notice Emitted when a RETRACTION is registered.
+    ///         Separate event — owner-initiated, not operator finding.
+    event Retracted(
+        string  indexed arId,
+        string  indexed targetArId,
+        string          replacedBy
+    );
+
+    /// @notice Emitted when a DISPUTE anchor is registered.
+    event Disputed(
+        string  indexed arId,
+        string  indexed targetArId,
+        string          disputeType,
+        string          evidenceUrl
+    );
+
+    /// @notice Emitted when a VOID anchor is registered.
+    event Voided(
+        string  indexed arId,
+        string  indexed targetArId,
+        string  indexed disputeArId,
+        string          evidence
+    );
+
+    /// @notice Emitted when an AFFIRMED anchor is registered.
+    event Affirmed(
+        string  indexed arId,
+        string  indexed targetArId,
+        string          affirmedBy
+    );
+
+    // =========================================================================
+    // ERRORS
+    // =========================================================================
 
     error AlreadyRegistered(string arId);
     error EmptyManifestHash();
     error EmptyArId();
     error InvalidParent(string parentHash);
+    error EmptyTargetArId();
+    error InvalidTarget(string targetArId);
 
-    // -------------------------------------------------------------------------
-    // Internal
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // INTERNAL
+    // =========================================================================
 
     function _validateBase(string calldata arId, AnchorBase calldata base) internal view {
         if (bytes(arId).length == 0)              revert EmptyArId();
@@ -236,9 +513,16 @@ contract AnchorRegistry {
         emit Anchored(arId, msg.sender, base.artifactType, base.descriptor, base.manifestHash, base.parentHash);
     }
 
-    // -------------------------------------------------------------------------
-    // Register Functions
-    // -------------------------------------------------------------------------
+    /// @notice Validates that a target AR-ID exists in the registry.
+    ///         Used by dispute, retraction, and affirmed register functions.
+    function _validateTarget(string calldata targetArId) internal view {
+        if (bytes(targetArId).length == 0) revert EmptyTargetArId();
+        if (!registered[targetArId])        revert InvalidTarget(targetArId);
+    }
+
+    // =========================================================================
+    // REGISTER FUNCTIONS — CONTENT (types 0-7)
+    // =========================================================================
 
     function registerCode(
         string calldata arId,
@@ -328,26 +612,155 @@ contract AnchorRegistry {
         _register(arId, base);
     }
 
+    // =========================================================================
+    // REGISTER FUNCTIONS — GATED (types 8-9, suppressed at launch)
+    // =========================================================================
+
+    /// @notice SUPPRESSED AT LAUNCH. No legalOperators added at deployment.
+    ///         Registers a legal document anchor: contracts, patents, filings.
+    ///         Will be opened in V2-V3 when document verification is ready.
+    ///         Owner must call addLegalOperator() to activate.
+    ///         Legal operator should be a cold wallet.
     function registerLegal(
         string calldata arId,
         AnchorBase calldata base,
         string calldata docType,
         string calldata url
-    ) external onlyOperator {
+    ) external onlyLegalOperator {
         _validateBase(arId, base);
         legalAnchors[arId] = LegalAnchor(base, docType, url);
         _register(arId, base);
     }
 
-    function registerProof(
+    /// @notice SUPPRESSED AT LAUNCH. No entityOperators added at deployment.
+    ///         Registers a verified entity anchor: person, company, institution.
+    ///         Will be opened in V2 when domain verification is ready.
+    ///         Owner must call addEntityOperator() to activate.
+    ///         Entity operator should be a cold wallet.
+    ///         claimedRoots is stored off-chain in Supabase and referenced
+    ///         via canonicalUrl. The immutable parentHash of existing V1 anchors
+    ///         cannot be modified, so entity-to-tree linkage is maintained
+    ///         in the canonical document and off-chain resolution layer.
+    function registerEntity(
         string calldata arId,
         AnchorBase calldata base,
-        string calldata proofType
-    ) external onlyOperator {
+        string calldata entityType,
+        string calldata entityDomain,
+        string calldata verificationMethod,
+        string calldata verificationProof,
+        string calldata canonicalUrl,
+        string calldata documentHash
+    ) external onlyEntityOperator {
         _validateBase(arId, base);
-        proofAnchors[arId] = ProofAnchor(base, proofType);
+        entityAnchors[arId] = EntityAnchor(
+            base,
+            entityType,
+            entityDomain,
+            verificationMethod,
+            verificationProof,
+            canonicalUrl,
+            documentHash
+        );
         _register(arId, base);
     }
+
+    // =========================================================================
+    // REGISTER FUNCTIONS — SELF-SERVICE (type 10)
+    // =========================================================================
+
+    /// @notice Register a RETRACTION on behalf of the anchor's owner.
+    ///         The creator is retracting their own work — this is not a finding
+    ///         of fraud. It is an autonomous choice by the registrant.
+    ///         Ownership is verified off-chain by FastAPI via ownership token
+    ///         before this function is called by the operator.
+    ///         The original anchor is not deleted — the Anchored event is
+    ///         permanent. RETRACTION is a permanent annotation of intent.
+    ///         replacedBy: optional AR-ID of a replacement anchor.
+    function registerRetraction(
+        string calldata arId,
+        AnchorBase calldata base,
+        string calldata targetArId,
+        string calldata reason,
+        string calldata replacedBy
+    ) external onlyOperator {
+        _validateBase(arId, base);
+        _validateTarget(targetArId);
+        retractionAnchors[arId] = RetractionAnchor(base, targetArId, reason, replacedBy);
+        _register(arId, base);
+        emit Retracted(arId, targetArId, replacedBy);
+    }
+
+    // =========================================================================
+    // REGISTER FUNCTIONS — DISPUTE SYSTEM (types 11-13)
+    // =========================================================================
+
+    /// @notice Attach a DISPUTE anchor to a flagged node.
+    ///         Marks the target anchor CONTESTED pending investigation.
+    ///         Only AnchorRegistry operators may call this.
+    ///         The target must be a registered AR-ID.
+    ///         parentHash in base should reference the disputed anchor
+    ///         to create an on-chain link in the tree.
+    function registerDispute(
+        string calldata arId,
+        AnchorBase calldata base,
+        string calldata targetArId,
+        string calldata disputeType,
+        string calldata evidenceUrl
+    ) external onlyOperator {
+        _validateBase(arId, base);
+        _validateTarget(targetArId);
+        disputeAnchors[arId] = DisputeAnchor(base, targetArId, disputeType, evidenceUrl);
+        _register(arId, base);
+        emit Disputed(arId, targetArId, disputeType, evidenceUrl);
+    }
+
+    /// @notice Attach a VOID anchor to the parent of the fraud origin.
+    ///         Permanently condemns the target and all its descendants.
+    ///         Cascade is enforced off-chain by the resolution endpoint —
+    ///         any anchor with a VOID node in its ancestry is condemned.
+    ///         Does not cascade up — ancestors and siblings are unaffected.
+    ///         Only AnchorRegistry operators may call this.
+    ///         A DISPUTE anchor must have preceded this (disputeArId required).
+    function registerVoid(
+        string calldata arId,
+        AnchorBase calldata base,
+        string calldata targetArId,
+        string calldata disputeArId,
+        string calldata findingUrl,
+        string calldata evidence
+    ) external onlyOperator {
+        _validateBase(arId, base);
+        _validateTarget(targetArId);
+        _validateTarget(disputeArId);
+        voidAnchors[arId] = VoidAnchor(base, targetArId, disputeArId, findingUrl, evidence);
+        _register(arId, base);
+        emit Voided(arId, targetArId, disputeArId, evidence);
+    }
+
+    /// @notice Attach an AFFIRMED anchor to a DISPUTE or VOID anchor.
+    ///         If affirming a DISPUTE: anchor was investigated, found legitimate.
+    ///         If affirming a VOID: appeal upheld, tree reinstated.
+    ///         affirmedBy must be INVESTIGATION or APPEAL.
+    ///         Only AnchorRegistry operators may call this.
+    ///         A tree carrying an AFFIRMED node is more trustworthy than one
+    ///         never questioned — actively investigated and found legitimate.
+    function registerAffirmed(
+        string calldata arId,
+        AnchorBase calldata base,
+        string calldata targetArId,
+        string calldata affirmedBy,
+        string calldata findingUrl
+    ) external onlyOperator {
+        _validateBase(arId, base);
+        _validateTarget(targetArId);
+        affirmedAnchors[arId] = AffirmedAnchor(base, targetArId, affirmedBy, findingUrl);
+        _register(arId, base);
+        emit Affirmed(arId, targetArId, affirmedBy);
+    }
+
+    // =========================================================================
+    // REGISTER FUNCTIONS — CATCH-ALL (type 14)
+    // =========================================================================
 
     function registerOther(
         string calldata arId,
@@ -361,4 +774,5 @@ contract AnchorRegistry {
         otherAnchors[arId] = OtherAnchor(base, kind, platform, url, value);
         _register(arId, base);
     }
+
 }
