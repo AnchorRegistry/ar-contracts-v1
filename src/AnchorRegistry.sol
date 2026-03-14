@@ -25,11 +25,11 @@ pragma solidity ^0.8.24;
 ///                            Owner-initiated. Active at launch. Operator submits
 ///                            on behalf of creator after ownership token verification.
 ///
-///         DISPUTE (12-14):   DISPUTE, VOID, AFFIRMED
+///         REVIEW (12-14):   REVIEW, VOID, AFFIRMED
 ///                            AnchorRegistry operator-only. Active at launch.
-///                            DISPUTE: soft flag, anchor under review.
+///                            REVIEW: soft flag, anchor under review.
 ///                            VOID: hard finding, subtree condemned, cascades down.
-///                            AFFIRMED: exoneration, dispute resolved.
+///                            AFFIRMED: exoneration, review resolved.
 ///
 ///         CATCH-ALL (15):    OTHER
 ///
@@ -48,7 +48,7 @@ contract AnchorRegistry {
     address public owner;
     address public recoveryAddress;
 
-    /// @notice Standard operators — content, retraction, dispute, and other types.
+    /// @notice Standard operators — content, retraction, review, and other types.
     ///         Can register types 0-7, 11-15. Cannot call registerLegal, registerEntity, or registerProof.
     mapping(address => bool) public operators;
 
@@ -263,7 +263,7 @@ contract AnchorRegistry {
     ///         CONTENT (0-7)      — what creators make. Active at launch.
     ///         GATED (8-10)       — suppressed. Separate operator gates.
     ///         SELF-SERVICE (11)  — owner-initiated retraction. Active at launch.
-    ///         DISPUTE (12-14)    — AnchorRegistry authority. Active at launch.
+    ///         REVIEW (12-14)    — AnchorRegistry authority. Active at launch.
     ///         CATCH-ALL (15)     — everything else. Active at launch.
     enum ArtifactType {
         // ── CONTENT (0-7) ─────────────────────────────────────────────────
@@ -294,15 +294,15 @@ contract AnchorRegistry {
                      //    Creator is retracting their own work.
                      //    Not a finding of fraud — owner's autonomous choice.
 
-        // ── DISPUTE (12-14) ───────────────────────────────────────────────
-        DISPUTE,     // 12 Soft flag. Attached to specific node under review.
+        // ── REVIEW (12-14) ───────────────────────────────────────────────
+        REVIEW,     // 12 Review opened. Attached to specific node under review.
                      //    Marks anchor CONTESTED. Provisional. Reversible.
                      //    onlyOperator.
         VOID,        // 13 Hard finding. Attached to parent of fraud origin.
                      //    Cascades DOWN. Does not cascade up.
                      //    Permanent unless AFFIRMED via appeal.
                      //    onlyOperator.
-        AFFIRMED,    // 14 Exoneration. Attached to DISPUTE (found legitimate)
+        AFFIRMED,    // 14 Exoneration. Attached to REVIEW (found legitimate)
                      //    or VOID (appeal upheld, tree reinstated).
                      //    onlyOperator.
 
@@ -401,20 +401,20 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // DISPUTE STRUCTS — types 12-14
+    // REVIEW STRUCTS — types 12-14
     // =========================================================================
 
-    /// @notice Soft flag. Attached to the specific node under review.
+    /// @notice Review opened. Attached to the specific node under review.
     ///         Marks the anchor CONTESTED pending investigation.
     ///         Only AnchorRegistry operators may attach.
-    ///         parentHash in base should reference the disputed anchor
+    ///         parentHash in base should reference the reviewed anchor
     ///         to create an on-chain link in the tree.
-    struct DisputeAnchor {
+    struct ReviewAnchor {
         AnchorBase base;
-        string targetArId;   // the AR-ID of the anchor being disputed
-        string disputeType;  // MALICIOUS_TREE | IMPERSONATION | FALSE_AUTHORSHIP
+        string targetArId;   // the AR-ID of the anchor being reviewed
+        string reviewType;  // MALICIOUS_TREE | IMPERSONATION | FALSE_AUTHORSHIP
                              // DEFAMATORY | OTHER
-        string evidenceUrl;  // anchorregistry.com/disputes/[dispute-ar-id]
+        string evidenceUrl;  // anchorregistry.com/reviews/[review-ar-id]
     }
 
     /// @notice Hard finding. Attached to the PARENT of the fraud origin.
@@ -422,17 +422,17 @@ contract AnchorRegistry {
     ///         Does NOT cascade up — ancestors and siblings are unaffected.
     ///         Cascade is enforced off-chain by the resolution endpoint.
     ///         Only AnchorRegistry operators may attach.
-    ///         A DISPUTE anchor must have preceded this finding (disputeArId required).
+    ///         A REVIEW anchor must have preceded this finding (reviewArId required).
     struct VoidAnchor {
         AnchorBase base;
         string targetArId;   // the parent AR-ID being condemned
-        string disputeArId;  // the DISPUTE anchor that preceded this finding
-        string findingUrl;   // anchorregistry.com/disputes/[void-ar-id]
+        string reviewArId;  // the REVIEW anchor that preceded this finding
+        string findingUrl;   // anchorregistry.com/reviews/[void-ar-id]
         string evidence;     // brief on-chain evidence summary
     }
 
-    /// @notice Exoneration. Attached to a DISPUTE or VOID anchor.
-    ///         If attached to DISPUTE: anchor was investigated, found legitimate.
+    /// @notice Exoneration. Attached to a REVIEW or VOID anchor.
+    ///         If attached to REVIEW: anchor was investigated, found legitimate.
     ///         If attached to VOID: appeal upheld, tree reinstated.
     ///         affirmedBy: INVESTIGATION or APPEAL.
     ///         Only AnchorRegistry operators may attach.
@@ -441,9 +441,9 @@ contract AnchorRegistry {
     ///         and found legitimate.
     struct AffirmedAnchor {
         AnchorBase base;
-        string targetArId;   // the DISPUTE or VOID AR-ID being affirmed
+        string targetArId;   // the REVIEW or VOID AR-ID being affirmed
         string affirmedBy;   // INVESTIGATION | APPEAL
-        string findingUrl;   // anchorregistry.com/disputes/[affirmed-ar-id]
+        string findingUrl;   // anchorregistry.com/reviews/[affirmed-ar-id]
     }
 
     // =========================================================================
@@ -480,8 +480,8 @@ contract AnchorRegistry {
     // Self-service anchors (type 11)
     mapping(string => RetractionAnchor) public retractionAnchors;
 
-    // Dispute anchors (types 12-14)
-    mapping(string => DisputeAnchor)    public disputeAnchors;
+    // ReviewA anchors (types 12-14)
+    mapping(string => ReviewAnchor)    public reviewAnchors;
     mapping(string => VoidAnchor)       public voidAnchors;
     mapping(string => AffirmedAnchor)   public affirmedAnchors;
 
@@ -517,11 +517,11 @@ contract AnchorRegistry {
         string          replacedBy
     );
 
-    /// @notice Emitted when a DISPUTE anchor is registered.
-    event Disputed(
+    /// @notice Emitted when a REVIEW anchor is registered.
+    event Reviewed(
         string  indexed arId,
         string  indexed targetArId,
-        string          disputeType,
+        string          reviewType,
         string          evidenceUrl
     );
 
@@ -529,7 +529,7 @@ contract AnchorRegistry {
     event Voided(
         string  indexed arId,
         string  indexed targetArId,
-        string  indexed disputeArId,
+        string  indexed reviewArId,
         string          evidence
     );
 
@@ -569,7 +569,7 @@ contract AnchorRegistry {
     }
 
     /// @notice Validates that a target AR-ID exists in the registry.
-    ///         Used by dispute, retraction, and affirmed register functions.
+    ///         Used by review, retraction, and affirmed register functions.
     function _validateTarget(string calldata targetArId) internal view {
         if (bytes(targetArId).length == 0) revert EmptyTargetArId();
         if (!registered[targetArId])        revert InvalidTarget(targetArId);
@@ -769,27 +769,27 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — DISPUTE SYSTEM (types 12-14)
+    // REGISTER FUNCTIONS — REVIEW SYSTEM (types 12-14)
     // =========================================================================
 
-    /// @notice Attach a DISPUTE anchor to a flagged node.
+    /// @notice Attach a REVIEW anchor to a flagged node.
     ///         Marks the target anchor CONTESTED pending investigation.
     ///         Only AnchorRegistry operators may call this.
     ///         The target must be a registered AR-ID.
-    ///         parentHash in base should reference the disputed anchor
+    ///         parentHash in base should reference the reviewed anchor
     ///         to create an on-chain link in the tree.
-    function registerDispute(
+    function registerReview(
         string calldata arId,
         AnchorBase calldata base,
         string calldata targetArId,
-        string calldata disputeType,
+        string calldata reviewType,
         string calldata evidenceUrl
     ) external onlyOperator {
         _validateBase(arId, base);
         _validateTarget(targetArId);
-        disputeAnchors[arId] = DisputeAnchor(base, targetArId, disputeType, evidenceUrl);
+        reviewAnchors[arId] = ReviewAnchor(base, targetArId, reviewType, evidenceUrl);
         _register(arId, base);
-        emit Disputed(arId, targetArId, disputeType, evidenceUrl);
+        emit Reviewed(arId, targetArId, reviewType, evidenceUrl);
     }
 
     /// @notice Attach a VOID anchor to the parent of the fraud origin.
@@ -798,25 +798,25 @@ contract AnchorRegistry {
     ///         any anchor with a VOID node in its ancestry is condemned.
     ///         Does not cascade up — ancestors and siblings are unaffected.
     ///         Only AnchorRegistry operators may call this.
-    ///         A DISPUTE anchor must have preceded this (disputeArId required).
+    ///         A REVIEW anchor must have preceded this (reviewArId required).
     function registerVoid(
         string calldata arId,
         AnchorBase calldata base,
         string calldata targetArId,
-        string calldata disputeArId,
+        string calldata reviewArId,
         string calldata findingUrl,
         string calldata evidence
     ) external onlyOperator {
         _validateBase(arId, base);
         _validateTarget(targetArId);
-        _validateTarget(disputeArId);
-        voidAnchors[arId] = VoidAnchor(base, targetArId, disputeArId, findingUrl, evidence);
+        _validateTarget(reviewArId);
+        voidAnchors[arId] = VoidAnchor(base, targetArId, reviewArId, findingUrl, evidence);
         _register(arId, base);
-        emit Voided(arId, targetArId, disputeArId, evidence);
+        emit Voided(arId, targetArId, reviewArId, evidence);
     }
 
-    /// @notice Attach an AFFIRMED anchor to a DISPUTE or VOID anchor.
-    ///         If affirming a DISPUTE: anchor was investigated, found legitimate.
+    /// @notice Attach an AFFIRMED anchor to a REVIEW or VOID anchor.
+    ///         If affirming a REVIEW: anchor was investigated, found legitimate.
     ///         If affirming a VOID: appeal upheld, tree reinstated.
     ///         affirmedBy must be INVESTIGATION or APPEAL.
     ///         Only AnchorRegistry operators may call this.
