@@ -10,32 +10,34 @@ pragma solidity ^0.8.24;
 ///         Immutable record of what existed, when, and who registered it.
 /// @dev    Deployed once on Base (Ethereum L2). Cannot be modified post-deployment.
 ///
-///         Fifteen artifact types in four logical groups:
+///         Sixteen artifact types in five logical groups:
 ///
-///         CONTENT (0-7):    CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST
-///                           What creators make. Active at launch. onlyOperator.
+///         CONTENT (0-7):     CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST
+///                            What creators make. Active at launch. onlyOperator.
 ///
-///         GATED (8-9):      LEGAL, ENTITY
-///                           Suppressed at launch. Separate operator gates.
-///                           LEGAL opens in V2-V3 with document verification.
-///                           ENTITY opens in V2 with domain verification.
+///         GATED (8-10):      LEGAL, ENTITY, PROOF
+///                            Suppressed at launch. Separate operator gates.
+///                            LEGAL opens in V2-V3 with document verification.
+///                            ENTITY opens in V2 with domain verification.
+///                            PROOF opens in V4 with ZK infrastructure.
 ///
-///         SELF-SERVICE (10): RETRACTION
-///                           Owner-initiated. Active at launch. Operator submits
-///                           on behalf of creator after ownership token verification.
+///         SELF-SERVICE (11): RETRACTION
+///                            Owner-initiated. Active at launch. Operator submits
+///                            on behalf of creator after ownership token verification.
 ///
-///         DISPUTE (11-13):  DISPUTE, VOID, AFFIRMED
-///                           AnchorRegistry operator-only. Active at launch.
-///                           DISPUTE: soft flag, anchor under review.
-///                           VOID: hard finding, subtree condemned, cascades down.
-///                           AFFIRMED: exoneration, dispute resolved.
+///         DISPUTE (12-14):   DISPUTE, VOID, AFFIRMED
+///                            AnchorRegistry operator-only. Active at launch.
+///                            DISPUTE: soft flag, anchor under review.
+///                            VOID: hard finding, subtree condemned, cascades down.
+///                            AFFIRMED: exoneration, dispute resolved.
 ///
-///         CATCH-ALL (14):   OTHER
+///         CATCH-ALL (15):    OTHER
 ///
-///         Three access gates:
-///         onlyOperator      — types 0-7, 10-14
-///         onlyLegalOperator — type 8  (no operators added at deployment)
-///         onlyEntityOperator— type 9  (no operators added at deployment)
+///         Four access gates:
+///         onlyOperator      — types 0-7, 11-15
+///         onlyLegalOperator — type 8   (no operators added at deployment)
+///         onlyEntityOperator— type 9   (no operators added at deployment)
+///         onlyProofOperator — type 10  (no operators added at deployment)
 
 contract AnchorRegistry {
 
@@ -47,7 +49,7 @@ contract AnchorRegistry {
     address public recoveryAddress;
 
     /// @notice Standard operators — content, retraction, dispute, and other types.
-    ///         Can register types 0-7, 10-14. Cannot call registerLegal or registerEntity.
+    ///         Can register types 0-7, 11-15. Cannot call registerLegal, registerEntity, or registerProof.
     mapping(address => bool) public operators;
 
     /// @notice Legal operators — LEGAL registration only (type 8).
@@ -57,6 +59,10 @@ contract AnchorRegistry {
     /// @notice Entity operators — ENTITY registration only (type 9).
     ///         Not added at deployment. Opens in V2 with domain verification.
     mapping(address => bool) public entityOperators;
+
+    /// @notice Proof operators — PROOF registration only (type 10).
+    ///         Not added at deployment. Opens in V4 with ZK infrastructure.
+    mapping(address => bool) public proofOperators;
 
     uint256 public constant RECOVERY_DELAY   = 7 days;
     uint256 public constant RECOVERY_LOCKOUT = 7 days;
@@ -75,6 +81,8 @@ contract AnchorRegistry {
     event LegalOperatorRemoved(address indexed operator);
     event EntityOperatorAdded(address indexed operator);
     event EntityOperatorRemoved(address indexed operator);
+    event ProofOperatorAdded(address indexed operator);
+    event ProofOperatorRemoved(address indexed operator);
     event RecoveryInitiated(address indexed recoveryAddress, address indexed pendingOwner);
     event RecoveryExecuted(address indexed newOwner);
     event RecoveryCancelled();
@@ -88,6 +96,7 @@ contract AnchorRegistry {
     error NotOperator();
     error NotLegalOperator();
     error NotEntityOperator();
+    error NotProofOperator();
     error NotRecoveryAddress();
     error RecoveryNotInitiated();
     error RecoveryDelayNotMet();
@@ -103,7 +112,7 @@ contract AnchorRegistry {
         _;
     }
 
-    /// @notice Gate for standard registration (types 0-7, 10-14).
+    /// @notice Gate for standard registration (types 0-7, 11-15).
     modifier onlyOperator() {
         if (!operators[msg.sender]) revert NotOperator();
         _;
@@ -120,6 +129,13 @@ contract AnchorRegistry {
     ///         Owner calls addEntityOperator() to activate in V2.
     modifier onlyEntityOperator() {
         if (!entityOperators[msg.sender]) revert NotEntityOperator();
+        _;
+    }
+
+    /// @notice Gate for PROOF registration (type 10). No operators added at launch.
+    ///         Owner calls addProofOperator() to activate in V4.
+    modifier onlyProofOperator() {
+        if (!proofOperators[msg.sender]) revert NotProofOperator();
         _;
     }
 
@@ -179,6 +195,21 @@ contract AnchorRegistry {
         emit EntityOperatorRemoved(op);
     }
 
+    /// @notice Add a proof operator. Opens PROOF registration (type 10).
+    ///         Only call when ZK proof infrastructure is ready (V4).
+    ///         Proof operator is a cold wallet — PROOF registrations require
+    ///         verified cryptographic proof infrastructure.
+    function addProofOperator(address op) external onlyOwner {
+        if (op == address(0)) revert ZeroAddress();
+        proofOperators[op] = true;
+        emit ProofOperatorAdded(op);
+    }
+
+    function removeProofOperator(address op) external onlyOwner {
+        proofOperators[op] = false;
+        emit ProofOperatorRemoved(op);
+    }
+
     function transferOwnership(address newOwner) external onlyOwner {
         if (newOwner == address(0)) revert ZeroAddress();
         emit OwnershipTransferred(owner, newOwner);
@@ -227,13 +258,13 @@ contract AnchorRegistry {
     // ARTIFACT TYPES
     // =========================================================================
 
-    /// @notice Fifteen artifact types in four logical groups.
+    /// @notice Sixteen artifact types in five logical groups.
     ///
-    ///         CONTENT (0-7)     — what creators make. Active at launch.
-    ///         GATED (8-9)       — suppressed. Separate operator gates.
-    ///         SELF-SERVICE (10) — owner-initiated retraction. Active at launch.
-    ///         DISPUTE (11-13)   — AnchorRegistry authority. Active at launch.
-    ///         CATCH-ALL (14)    — everything else. Active at launch.
+    ///         CONTENT (0-7)      — what creators make. Active at launch.
+    ///         GATED (8-10)       — suppressed. Separate operator gates.
+    ///         SELF-SERVICE (11)  — owner-initiated retraction. Active at launch.
+    ///         DISPUTE (12-14)    — AnchorRegistry authority. Active at launch.
+    ///         CATCH-ALL (15)     — everything else. Active at launch.
     enum ArtifactType {
         // ── CONTENT (0-7) ─────────────────────────────────────────────────
         CODE,        // 0  repos, packages, commits, scripts
@@ -245,32 +276,38 @@ contract AnchorRegistry {
         TEXT,        // 6  blogs, articles, books, essays
         POST,        // 7  tweets, reddit, social
 
-        // ── GATED (8-9) ───────────────────────────────────────────────────
+        // ── GATED (8-10) ──────────────────────────────────────────────────
         LEGAL,       // 8  SUPPRESSED — contracts, patents, filings (V2-V3)
                      //    onlyLegalOperator. No operators at deployment.
         ENTITY,      // 9  SUPPRESSED — persons, companies, institutions (V2)
                      //    onlyEntityOperator. No operators at deployment.
+        PROOF,       // 10 SUPPRESSED — ZK proofs, cryptographic proofs,
+                     //    formal verifications (V4)
+                     //    onlyProofOperator. No operators at deployment.
+                     //    Single artifact proofs. Complex multi-artifact
+                     //    compliance proofs handled by companion
+                     //    AnchorRegistryZKP.sol contract.
 
-        // ── SELF-SERVICE (10) ─────────────────────────────────────────────
-        RETRACTION,  // 10 Owner-initiated. Operator submits on behalf of creator
+        // ── SELF-SERVICE (11) ─────────────────────────────────────────────
+        RETRACTION,  // 11 Owner-initiated. Operator submits on behalf of creator
                      //    after off-chain ownership token verification.
                      //    Creator is retracting their own work.
                      //    Not a finding of fraud — owner's autonomous choice.
 
-        // ── DISPUTE (11-13) ───────────────────────────────────────────────
-        DISPUTE,     // 11 Soft flag. Attached to specific node under review.
+        // ── DISPUTE (12-14) ───────────────────────────────────────────────
+        DISPUTE,     // 12 Soft flag. Attached to specific node under review.
                      //    Marks anchor CONTESTED. Provisional. Reversible.
                      //    onlyOperator.
-        VOID,        // 12 Hard finding. Attached to parent of fraud origin.
+        VOID,        // 13 Hard finding. Attached to parent of fraud origin.
                      //    Cascades DOWN. Does not cascade up.
                      //    Permanent unless AFFIRMED via appeal.
                      //    onlyOperator.
-        AFFIRMED,    // 13 Exoneration. Attached to DISPUTE (found legitimate)
+        AFFIRMED,    // 14 Exoneration. Attached to DISPUTE (found legitimate)
                      //    or VOID (appeal upheld, tree reinstated).
                      //    onlyOperator.
 
-        // ── CATCH-ALL (14) ────────────────────────────────────────────────
-        OTHER        // 14 catch all
+        // ── CATCH-ALL (15) ────────────────────────────────────────────────
+        OTHER        // 15 catch all
     }
 
     // =========================================================================
@@ -298,7 +335,7 @@ contract AnchorRegistry {
     struct PostAnchor     { AnchorBase base; string platform;     string url; }
 
     // =========================================================================
-    // GATED STRUCTS — types 8-9 (suppressed at launch)
+    // GATED STRUCTS — types 8-10 (suppressed at launch)
     // =========================================================================
 
     /// @notice SUPPRESSED. Contracts, patents, filings, disclosures.
@@ -327,8 +364,25 @@ contract AnchorRegistry {
         string documentHash;        // SHA256 of canonical document
     }
 
+    /// @notice SUPPRESSED. ZK proofs, cryptographic proofs, formal verifications.
+    ///         Requires ZK proof infrastructure. Opens in V4.
+    ///         For single artifact proofs — e.g. ZK proof of authorship,
+    ///         ZK proof of prior art, formal verification of a specific claim.
+    ///         Complex multi-artifact compliance proofs (e.g. training data
+    ///         compliance across entire model lineage) are handled by the
+    ///         companion AnchorRegistryZKP.sol contract which references
+    ///         AR-IDs from this registry without touching the core contract.
+    struct ProofAnchor {
+        AnchorBase base;
+        string proofType;    // ZK_PROOF | GROTH16 | PLONK | STARK
+                             // FORMAL_VERIFICATION | OTHER
+        string proofSystem;  // the specific proof system used
+        string verifierUrl;  // on-chain verifier contract address or URL
+        string proofHash;    // hash of the proof itself
+    }
+
     // =========================================================================
-    // SELF-SERVICE STRUCT — type 10
+    // SELF-SERVICE STRUCT — type 11
     // =========================================================================
 
     /// @notice Owner-initiated retraction. The creator is marking their own
@@ -347,7 +401,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // DISPUTE STRUCTS — types 11-13
+    // DISPUTE STRUCTS — types 12-14
     // =========================================================================
 
     /// @notice Soft flag. Attached to the specific node under review.
@@ -393,7 +447,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // CATCH-ALL STRUCT — type 14
+    // CATCH-ALL STRUCT — type 15
     // =========================================================================
 
     struct OtherAnchor {
@@ -418,19 +472,20 @@ contract AnchorRegistry {
     mapping(string => TextAnchor)       public textAnchors;
     mapping(string => PostAnchor)       public postAnchors;
 
-    // Gated anchors (types 8-9) — structs exist, register functions are gated
+    // Gated anchors (types 8-10) — structs exist, register functions are gated
     mapping(string => LegalAnchor)      public legalAnchors;
     mapping(string => EntityAnchor)     public entityAnchors;
+    mapping(string => ProofAnchor)      public proofAnchors;
 
-    // Self-service anchors (type 10)
+    // Self-service anchors (type 11)
     mapping(string => RetractionAnchor) public retractionAnchors;
 
-    // Dispute anchors (types 11-13)
+    // Dispute anchors (types 12-14)
     mapping(string => DisputeAnchor)    public disputeAnchors;
     mapping(string => VoidAnchor)       public voidAnchors;
     mapping(string => AffirmedAnchor)   public affirmedAnchors;
 
-    // Catch-all anchors (type 14)
+    // Catch-all anchors (type 15)
     mapping(string => OtherAnchor)      public otherAnchors;
 
     /// @notice Global AR-ID collision prevention. Once registered, an AR-ID
@@ -613,7 +668,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — GATED (types 8-9, suppressed at launch)
+    // REGISTER FUNCTIONS — GATED (types 8-10, suppressed at launch)
     // =========================================================================
 
     /// @notice SUPPRESSED AT LAUNCH. No legalOperators added at deployment.
@@ -664,8 +719,31 @@ contract AnchorRegistry {
         _register(arId, base);
     }
 
+    /// @notice SUPPRESSED AT LAUNCH. No proofOperators added at deployment.
+    ///         Registers a cryptographic proof artifact: ZK proofs, formal
+    ///         verifications, cryptographic proofs of specific claims.
+    ///         Will be opened in V4 when ZK infrastructure is ready.
+    ///         Owner must call addProofOperator() to activate.
+    ///         Proof operator should be a cold wallet.
+    ///         For complex multi-artifact compliance proofs (e.g. proving
+    ///         training data compliance across an entire model lineage),
+    ///         use the companion AnchorRegistryZKP.sol contract which
+    ///         references AR-IDs from this registry.
+    function registerProof(
+        string calldata arId,
+        AnchorBase calldata base,
+        string calldata proofType,
+        string calldata proofSystem,
+        string calldata verifierUrl,
+        string calldata proofHash
+    ) external onlyProofOperator {
+        _validateBase(arId, base);
+        proofAnchors[arId] = ProofAnchor(base, proofType, proofSystem, verifierUrl, proofHash);
+        _register(arId, base);
+    }
+
     // =========================================================================
-    // REGISTER FUNCTIONS — SELF-SERVICE (type 10)
+    // REGISTER FUNCTIONS — SELF-SERVICE (type 11)
     // =========================================================================
 
     /// @notice Register a RETRACTION on behalf of the anchor's owner.
@@ -691,7 +769,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — DISPUTE SYSTEM (types 11-13)
+    // REGISTER FUNCTIONS — DISPUTE SYSTEM (types 12-14)
     // =========================================================================
 
     /// @notice Attach a DISPUTE anchor to a flagged node.
@@ -759,7 +837,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — CATCH-ALL (type 14)
+    // REGISTER FUNCTIONS — CATCH-ALL (type 15)
     // =========================================================================
 
     function registerOther(
