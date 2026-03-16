@@ -313,9 +313,9 @@ contract AnchorRegistryTest is Test {
         emit AnchorRegistry.Retracted("AR-RET02", "AR-V1", "AR-V2");
         registry.registerRetraction("AR-RET02", b, "AR-V1", "Superseded", "AR-V2");
 
-        AnchorRegistry.RetractionAnchor memory ret = registry.retractionAnchors("AR-RET02");
-        assertEq(ret.targetArId, "AR-V1");
-        assertEq(ret.replacedBy, "AR-V2");
+        (,string memory retTargetArId,,string memory retReplacedBy) = registry.retractionAnchors("AR-RET02");
+        assertEq(retTargetArId, "AR-V1");
+        assertEq(retReplacedBy, "AR-V2");
     }
 
     function test_Retraction_NonExistentTarget_Reverts() public {
@@ -354,12 +354,12 @@ contract AnchorRegistryTest is Test {
         registry.registerRetraction("AR-RET", retb, "AR-V1", "Superseded by V2", "AR-V2");
 
         // replacedBy stored — resolution layer handles logical child migration
-        AnchorRegistry.RetractionAnchor memory ret = registry.retractionAnchors("AR-RET");
-        assertEq(ret.replacedBy, "AR-V2");
+        (,,,string memory retReplacedBy2) = registry.retractionAnchors("AR-RET");
+        assertEq(retReplacedBy2, "AR-V2");
 
         // child's parentHash is immutable on-chain
-        AnchorRegistry.CodeAnchor memory child = registry.codeAnchors("AR-CHILD");
-        assertEq(child.base.parentHash, "AR-V1");
+        (AnchorRegistry.AnchorBase memory childBase,,, ) = registry.codeAnchors("AR-CHILD");
+        assertEq(childBase.parentHash, "AR-V1");
     }
 
     // =========================================================================
@@ -423,10 +423,10 @@ contract AnchorRegistryTest is Test {
         registry.registerVoid("AR-VOID01", b, "AR-VTARGET01", "AR-REV-V01", "https://test", "Fraud confirmed");
         assertTrue(registry.registered("AR-VOID01"));
 
-        AnchorRegistry.VoidAnchor memory v = registry.voidAnchors("AR-VOID01");
-        assertEq(v.targetArId, "AR-VTARGET01");
-        assertEq(v.reviewArId, "AR-REV-V01");
-        assertEq(v.evidence,   "Fraud confirmed");
+        (,string memory vTargetArId, string memory vReviewArId,, string memory vEvidence) = registry.voidAnchors("AR-VOID01");
+        assertEq(vTargetArId, "AR-VTARGET01");
+        assertEq(vReviewArId, "AR-REV-V01");
+        assertEq(vEvidence,   "Fraud confirmed");
     }
 
     function test_Void_NonExistentTarget_Reverts() public {
@@ -492,9 +492,9 @@ contract AnchorRegistryTest is Test {
         emit AnchorRegistry.Affirmed("AR-AFF02", "AR-VOID-A02", "APPEAL");
         registry.registerAffirmed("AR-AFF02", ab, "AR-VOID-A02", "APPEAL", "https://test");
 
-        AnchorRegistry.AffirmedAnchor memory aff = registry.affirmedAnchors("AR-AFF02");
-        assertEq(aff.targetArId, "AR-VOID-A02");
-        assertEq(aff.affirmedBy, "APPEAL");
+        (,string memory affTargetArId, string memory affAffirmedBy,) = registry.affirmedAnchors("AR-AFF02");
+        assertEq(affTargetArId, "AR-VOID-A02");
+        assertEq(affAffirmedBy, "APPEAL");
     }
 
     function test_Affirmed_NonExistentTarget_Reverts() public {
@@ -852,10 +852,15 @@ contract AnchorRegistryTest is Test {
     }
 
     function test_GriefingDefence_MultipleCancel() public {
+        uint256 start = block.timestamp;
         for (uint256 i = 0; i < 3; i++) {
-            vm.warp(block.timestamp + 7 days + 1);
+            // jump to a clean window: each cycle is 14 days apart
+            vm.warp(start + (i * 14 days) + 1);
             vm.prank(recovery); registry.initiateRecovery(newOwner);
+
             vm.prank(owner); registry.cancelRecovery();
+            // cancelRecovery sets lockoutUntil = block.timestamp + 7 days
+            // we are still inside that window — immediate retry must revert
             vm.prank(recovery);
             vm.expectRevert(AnchorRegistry.RecoveryLockedOut.selector);
             registry.initiateRecovery(newOwner);
