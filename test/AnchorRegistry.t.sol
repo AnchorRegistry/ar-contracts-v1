@@ -9,19 +9,20 @@ import "forge-std/Test.sol";
 import "../src/AnchorRegistry.sol";
 
 /// @title  AnchorRegistryTest
-/// @notice Foundry test suite for AnchorRegistry.sol (final — 16 artifact types).
+/// @notice Foundry test suite for AnchorRegistry.sol (18 artifact types).
 ///
 ///         Sections:
-///         1.  Content types (0-7)
-///         2.  Gated types (8-10) — LEGAL, ENTITY, PROOF
-///         3.  RETRACTION (type 11)
-///         4.  REVIEW, VOID, AFFIRMED (types 12-14)
-///         5.  OTHER (type 15)
-///         6.  Access control
-///         7.  Edge cases & validation
-///         8.  Tree integrity
-///         9.  Events
-///         10. Recovery & griefing defence
+///         1.  Content types (0-8)
+///         2.  Transaction types (9) — RECEIPT
+///         3.  Gated types (10-12) — LEGAL, ENTITY, PROOF
+///         4.  RETRACTION (type 13)
+///         5.  REVIEW, VOID, AFFIRMED (types 14-16)
+///         6.  OTHER (type 17)
+///         7.  Access control
+///         8.  Edge cases & validation
+///         9.  Tree integrity
+///         10. Events
+///         11. Recovery & griefing defence
 
 contract AnchorRegistryTest is Test {
 
@@ -90,7 +91,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 1. CONTENT TYPES (0-7)
+    // 1. CONTENT TYPES (0-8)
     // =========================================================================
 
     function test_RegisterCode() public {
@@ -155,6 +156,15 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-PST01"));
     }
 
+    function test_RegisterOnChain() public {
+        vm.prank(operator);
+        registry.registerOnChain("AR-ONC01",
+            _base(AnchorRegistry.ArtifactType.ONCHAIN, "sha256:onc01", "WALLET-CLAIM"),
+            "base", "ADDRESS", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+            "https://basescan.org/address/0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
+        assertTrue(registry.registered("AR-ONC01"));
+    }
+
     function test_BackupOperatorCanRegister() public {
         vm.prank(opBackup);
         registry.registerCode("AR-BACK01", base, "git:backup", "MIT", "https://test");
@@ -162,10 +172,174 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 2. GATED TYPES (8-10) — suppressed at launch
+    // 2. TRANSACTION TYPES (9) — RECEIPT
     // =========================================================================
 
-    // ── LEGAL (8) ─────────────────────────────────────────────────────────────
+    function test_Receipt_Purchase_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReceipt("AR-RCP01",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp01", "COUCH-WAYFAIR-2026"),
+            "PURCHASE", "Wayfair", "1299.99", "CAD",
+            "ORDER-WF-2026-123456", "shopify", "https://wayfair.com/orders/123456");
+        assertTrue(registry.registered("AR-RCP01"));
+
+        (AnchorRegistry.AnchorBase memory b, string memory rt, string memory merch,
+         string memory amt, string memory curr, string memory oid,,) =
+            registry.receiptAnchors("AR-RCP01");
+        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.RECEIPT));
+        assertEq(rt,   "PURCHASE");
+        assertEq(merch, "Wayfair");
+        assertEq(amt,  "1299.99");
+        assertEq(curr, "CAD");
+        assertEq(oid,  "ORDER-WF-2026-123456");
+    }
+
+    function test_Receipt_Medical_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReceipt("AR-RCP02",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp02", "PRESCRIPTION-2026"),
+            "MEDICAL", "Shoppers Drug Mart", "48.50", "CAD",
+            "RX-2026-789012", "", "");
+        assertTrue(registry.registered("AR-RCP02"));
+
+        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP02");
+        assertEq(rt, "MEDICAL");
+    }
+
+    function test_Receipt_Financial_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReceipt("AR-RCP03",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp03", "WIRE-TRANSFER-2026"),
+            "FINANCIAL", "RBC Royal Bank", "50000.00", "CAD",
+            "WIRE-2026-456789", "", "");
+        assertTrue(registry.registered("AR-RCP03"));
+
+        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP03");
+        assertEq(rt, "FINANCIAL");
+    }
+
+    function test_Receipt_Government_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReceipt("AR-RCP04",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp04", "TAX-PAYMENT-2026"),
+            "GOVERNMENT", "Canada Revenue Agency", "12500.00", "CAD",
+            "CRA-2026-TAX-654321", "", "https://cra.canada.ca/receipt/654321");
+        assertTrue(registry.registered("AR-RCP04"));
+
+        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP04");
+        assertEq(rt, "GOVERNMENT");
+    }
+
+    function test_Receipt_Event_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReceipt("AR-RCP05",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp05", "CONCERT-TICKET-2026"),
+            "EVENT", "Ticketmaster", "189.50", "CAD",
+            "TM-2026-987654", "ticketmaster", "https://ticketmaster.ca/orders/987654");
+        assertTrue(registry.registered("AR-RCP05"));
+
+        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP05");
+        assertEq(rt, "EVENT");
+    }
+
+    function test_Receipt_Service_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReceipt("AR-RCP06",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp06", "PLUMBER-2026"),
+            "SERVICE", "Vancouver Plumbing Co.", "450.00", "CAD",
+            "INV-2026-111222", "", "");
+        assertTrue(registry.registered("AR-RCP06"));
+
+        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP06");
+        assertEq(rt, "SERVICE");
+    }
+
+    function test_Receipt_MinimalFields_Succeeds() public {
+        // merchant, platform, url all optional — empty string valid
+        vm.prank(operator);
+        registry.registerReceipt("AR-RCP07",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp07", "RECEIPT-MINIMAL"),
+            "PURCHASE", "", "99.99", "USD", "ORD-001", "", "");
+        assertTrue(registry.registered("AR-RCP07"));
+    }
+
+    function test_Receipt_ByStandardOperator_Succeeds() public {
+        // RECEIPT uses onlyOperator — standard operators can register
+        vm.prank(opBackup);
+        registry.registerReceipt("AR-RCP08",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp08", "RECEIPT-BACKUP"),
+            "PURCHASE", "Amazon", "299.99", "USD", "AMZ-2026-001", "amazon", "");
+        assertTrue(registry.registered("AR-RCP08"));
+    }
+
+    function test_Receipt_ByStranger_Reverts() public {
+        vm.prank(stranger);
+        vm.expectRevert(AnchorRegistry.NotOperator.selector);
+        registry.registerReceipt("AR-RCP09",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp09", "RECEIPT-STRANGER"),
+            "PURCHASE", "Amazon", "299.99", "USD", "AMZ-001", "", "");
+    }
+
+    function test_Receipt_AnchoredEvent_Emitted() public {
+        vm.prank(operator);
+        vm.expectEmit(true, true, false, true);
+        emit AnchorRegistry.Anchored(
+            "AR-RCP10", operator,
+            AnchorRegistry.ArtifactType.RECEIPT,
+            "LAPTOP-BESTBUY-2026", "sha256:rcp10", ""
+        );
+        registry.registerReceipt("AR-RCP10",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp10", "LAPTOP-BESTBUY-2026"),
+            "PURCHASE", "Best Buy", "1899.99", "CAD", "BB-2026-555666", "bestbuy", "");
+    }
+
+    function test_Receipt_DuplicateArId_Reverts() public {
+        vm.prank(operator);
+        registry.registerReceipt("AR-RCP11",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp11", "RECEIPT"),
+            "PURCHASE", "Merchant", "100.00", "USD", "ORD-001", "", "");
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-RCP11"));
+        registry.registerReceipt("AR-RCP11",
+            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp11b", "RECEIPT"),
+            "PURCHASE", "Merchant", "100.00", "USD", "ORD-001", "", "");
+    }
+
+    function test_Receipt_AsChildOfCode_Succeeds() public {
+        // A receipt can be a child of any registered anchor — e.g. proof of purchase
+        // anchored under the product's code anchor
+        _code("AR-PRODUCT01", "sha256:product01");
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp12", "PURCHASE-PRODUCT01"
+        );
+        b.parentHash = "AR-PRODUCT01";
+        vm.prank(operator);
+        registry.registerReceipt("AR-RCP12", b,
+            "PURCHASE", "Shopify Store", "49.99", "USD", "SHP-2026-001", "shopify", "");
+        assertTrue(registry.registered("AR-RCP12"));
+    }
+
+    function test_Receipt_EnumValue_Is9() public {
+        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT), 9);
+    }
+
+    function test_Receipt_GatedTypesShiftedCorrectly() public {
+        // Verify enum values shifted as expected after RECEIPT insertion at 9
+        assertEq(uint8(AnchorRegistry.ArtifactType.LEGAL),      10);
+        assertEq(uint8(AnchorRegistry.ArtifactType.ENTITY),     11);
+        assertEq(uint8(AnchorRegistry.ArtifactType.PROOF),      12);
+        assertEq(uint8(AnchorRegistry.ArtifactType.RETRACTION), 13);
+        assertEq(uint8(AnchorRegistry.ArtifactType.REVIEW),     14);
+        assertEq(uint8(AnchorRegistry.ArtifactType.VOID),       15);
+        assertEq(uint8(AnchorRegistry.ArtifactType.AFFIRMED),   16);
+        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      17);
+    }
+
+    // =========================================================================
+    // 3. GATED TYPES (10-12) — suppressed at launch
+    // =========================================================================
+
+    // ── LEGAL (10) ────────────────────────────────────────────────────────────
 
     function test_Legal_SuppressedAtLaunch() public {
         assertFalse(registry.legalOperators(operator));
@@ -199,7 +373,7 @@ contract AnchorRegistryTest is Test {
             "TRADEMARK", "https://test");
     }
 
-    // ── ENTITY (9) ────────────────────────────────────────────────────────────
+    // ── ENTITY (11) ───────────────────────────────────────────────────────────
 
     function test_Entity_SuppressedAtLaunch() public {
         assertFalse(registry.entityOperators(operator));
@@ -236,7 +410,7 @@ contract AnchorRegistryTest is Test {
             "PERSON", "icmoore.com", "DNS_TXT", "proof", "", "");
     }
 
-    // ── PROOF (10) ────────────────────────────────────────────────────────────
+    // ── PROOF (12) ────────────────────────────────────────────────────────────
 
     function test_Proof_SuppressedAtLaunch() public {
         assertFalse(registry.proofOperators(operator));
@@ -287,7 +461,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 3. RETRACTION (type 11)
+    // 4. RETRACTION (type 13)
     // =========================================================================
 
     function test_Retraction_Succeeds() public {
@@ -353,20 +527,18 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerRetraction("AR-RET", retb, "AR-V1", "Superseded by V2", "AR-V2");
 
-        // replacedBy stored — resolution layer handles logical child migration
         (,,,string memory retReplacedBy2) = registry.retractionAnchors("AR-RET");
         assertEq(retReplacedBy2, "AR-V2");
 
-        // child's parentHash is immutable on-chain
         (AnchorRegistry.AnchorBase memory childBase,,, ) = registry.codeAnchors("AR-CHILD");
         assertEq(childBase.parentHash, "AR-V1");
     }
 
     // =========================================================================
-    // 4. REVIEW, VOID, AFFIRMED (types 12-14)
+    // 5. REVIEW, VOID, AFFIRMED (types 14-16)
     // =========================================================================
 
-    // ── REVIEW (12) ───────────────────────────────────────────────────────────
+    // ── REVIEW (14) ───────────────────────────────────────────────────────────
 
     function test_Review_Succeeds() public {
         _code("AR-RTARGET01", "sha256:rtarget01");
@@ -409,7 +581,7 @@ contract AnchorRegistryTest is Test {
         registry.registerReview("AR-REV04", b, "AR-RTARGET02", "OTHER", "https://test");
     }
 
-    // ── VOID (13) ─────────────────────────────────────────────────────────────
+    // ── VOID (15) ─────────────────────────────────────────────────────────────
 
     function test_Void_Succeeds() public {
         _review("AR-REV-V01", "AR-VTARGET01");
@@ -458,7 +630,7 @@ contract AnchorRegistryTest is Test {
         registry.registerVoid("AR-VOID04", b, "AR-VTARGET03", "AR-REV-V02", "https://test", "evidence");
     }
 
-    // ── AFFIRMED (14) ─────────────────────────────────────────────────────────
+    // ── AFFIRMED (16) ─────────────────────────────────────────────────────────
 
     function test_Affirmed_OnReview_Investigation() public {
         _review("AR-REV-A01", "AR-ATARGET01");
@@ -554,7 +726,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 5. OTHER (type 15)
+    // 6. OTHER (type 17)
     // =========================================================================
 
     function test_RegisterOther() public {
@@ -566,7 +738,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 6. ACCESS CONTROL
+    // 7. ACCESS CONTROL
     // =========================================================================
 
     function test_OwnerAndRecoverySetOnDeploy() public view {
@@ -633,7 +805,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 7. EDGE CASES & VALIDATION
+    // 8. EDGE CASES & VALIDATION
     // =========================================================================
 
     function test_EmptyArId_Reverts() public {
@@ -674,7 +846,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 8. TREE INTEGRITY
+    // 9. TREE INTEGRITY
     // =========================================================================
 
     function test_ValidParentHash_Succeeds() public {
@@ -722,7 +894,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 9. EVENTS
+    // 10. EVENTS
     // =========================================================================
 
     function test_AnchoredEvent_OnRegisterCode() public {
@@ -786,7 +958,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 10. RECOVERY & GRIEFING DEFENCE
+    // 11. RECOVERY & GRIEFING DEFENCE
     // =========================================================================
 
     function test_RecoveryInitiated() public {
@@ -854,13 +1026,9 @@ contract AnchorRegistryTest is Test {
     function test_GriefingDefence_MultipleCancel() public {
         uint256 start = block.timestamp;
         for (uint256 i = 0; i < 3; i++) {
-            // jump to a clean window: each cycle is 14 days apart
             vm.warp(start + (i * 14 days) + 1);
             vm.prank(recovery); registry.initiateRecovery(newOwner);
-
             vm.prank(owner); registry.cancelRecovery();
-            // cancelRecovery sets lockoutUntil = block.timestamp + 7 days
-            // we are still inside that window — immediate retry must revert
             vm.prank(recovery);
             vm.expectRevert(AnchorRegistry.RecoveryLockedOut.selector);
             registry.initiateRecovery(newOwner);
