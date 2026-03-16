@@ -4,7 +4,7 @@
 
 AnchorRegistry is immutable provenance infrastructure for the AI era. Any creator can register any digital artifact and receive a permanent, verifiable, on-chain proof of authorship.
 
-**SPDX-Anchor: anchorregistry.ai/AR-2026-K7X9M2P**
+**SPDX-Anchor: anchorregistry.ai/AR-2026-0000001**
 
 ---
 
@@ -32,7 +32,7 @@ ar-onchain/
 ├── src/
 │   └── AnchorRegistry.sol      # The contract — deployed once, immutable forever
 ├── test/
-│   └── AnchorRegistry.t.sol    # Full Foundry test suite
+│   └── AnchorRegistry.t.sol    # Full Foundry test suite (78 tests)
 ├── script/
 │   └── Deploy.s.sol            # Deployment script (Sepolia + Base mainnet)
 ├── foundry.toml
@@ -54,7 +54,7 @@ foundryup
 ### Install dependencies
 
 ```bash
-forge install foundry-rs/forge-std
+forge install foundry-rs/forge-std --no-git
 ```
 
 ### Run tests
@@ -63,7 +63,7 @@ forge install foundry-rs/forge-std
 forge test -vvv
 ```
 
-### Deploy to Sepolia (testnet)
+### Deploy to Base Sepolia (testnet)
 
 ```bash
 cp .env.example .env
@@ -94,17 +94,33 @@ forge script script/Deploy.s.sol \
 
 ### Artifact Types
 
-11 artifact types: `CODE`, `RESEARCH`, `DATA`, `MODEL`, `AGENT`, `MEDIA`, `TEXT`, `POST`, `LEGAL`, `PROOF`, `OTHER`
+17 artifact types in 6 logical groups:
+
+| Group | Types | Description |
+|-------|-------|-------------|
+| **CONTENT** (0-8) | `CODE`, `RESEARCH`, `DATA`, `MODEL`, `AGENT`, `MEDIA`, `TEXT`, `POST`, `ONCHAIN` | What creators make. Active at launch. `onlyOperator`. |
+| **GATED** (9-11) | `LEGAL`, `ENTITY`, `PROOF` | Suppressed at launch. Separate operator gates. |
+| **SELF-SERVICE** (12) | `RETRACTION` | Owner-initiated. Active at launch. Operator submits on behalf of creator after ownership token verification. |
+| **REVIEW** (13-15) | `REVIEW`, `VOID`, `AFFIRMED` | AnchorRegistry operator-only. Active at launch. |
+| **CATCH-ALL** (16) | `OTHER` | Everything else. |
+
+**Gated type activation:**
+- `LEGAL` — opens in V2-V3 with document verification. Owner calls `addLegalOperator()`.
+- `ENTITY` — opens in V2 with domain verification. Owner calls `addEntityOperator()`.
+- `PROOF` — opens in V4 with ZK infrastructure. Owner calls `addProofOperator()`.
 
 ### Access Control
 
-Three-tier permissioned architecture:
+Four-tier permissioned architecture:
 
-| Role | Capabilities |
-|------|-------------|
-| Owner | addOperator, removeOperator, transferOwnership, cancelRecovery |
-| Operator | All register*() functions |
-| Recovery Address | initiateRecovery, executeRecovery, setRecoveryAddress |
+| Role | Capabilities | Active at Launch |
+|------|-------------|-----------------|
+| **Owner** | `addOperator`, `removeOperator`, `transferOwnership`, `cancelRecovery` | Yes |
+| **Operator** | All `register*()` functions for types 0-8, 12-16 | Yes |
+| **Legal Operator** | `registerLegal()` (type 9) | No — zero operators at deployment |
+| **Entity Operator** | `registerEntity()` (type 10) | No — zero operators at deployment |
+| **Proof Operator** | `registerProof()` (type 11) | No — zero operators at deployment |
+| **Recovery Address** | `initiateRecovery`, `executeRecovery`, `setRecoveryAddress` | Yes |
 
 ### Recovery
 
@@ -113,6 +129,25 @@ Three-tier permissioned architecture:
 ### Indestructibility
 
 The complete registry is reconstructable from Ethereum event logs alone. Every `Anchored` event contains all fields needed to rebuild the full artifact table. Trees reassemble automatically via `parentHash`.
+
+---
+
+## foundry.toml
+
+`via_ir = true` is required due to stack depth in `registerEntity()` (EntityAnchor has 7 string fields):
+
+```toml
+[profile.default]
+src     = "src"
+out     = "out"
+libs    = ["lib"]
+via_ir  = true
+remappings = ["forge-std/=lib/forge-std/src/"]
+
+[profile.default.optimizer]
+enabled = true
+runs    = 200
+```
 
 ---
 
