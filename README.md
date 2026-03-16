@@ -158,7 +158,7 @@ runs    = 200
 | `SPDX-Anchor` | Software artifacts — code, packages, repos, scripts |
 | `DAPX-Anchor` | Everything else — research, data, models, media, text, legal |
 
-**Format:** `SPDX-Anchor: anchorregistry.ai/AR-2026-K7X9M2P`
+**Format:** `SPDX-Anchor: anchorregistry.ai/AR-2026-0000001`
 
 ---
 
