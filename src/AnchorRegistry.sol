@@ -10,34 +10,36 @@ pragma solidity ^0.8.24;
 ///         Immutable record of what existed, when, and who registered it.
 /// @dev    Deployed once on Base (Ethereum L2). Cannot be modified post-deployment.
 ///
-///         Sixteen artifact types in five logical groups:
+///         Seventeen artifact types in six logical groups:
 ///
-///         CONTENT (0-7):     CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST
+///         CONTENT (0-8):     CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN
 ///                            What creators make. Active at launch. onlyOperator.
+///                            ONCHAIN: Ethereum addresses, transactions, contracts,
+///                            NFTs, token IDs, DAOs, multisigs — on-chain asset provenance.
 ///
-///         GATED (8-10):      LEGAL, ENTITY, PROOF
+///         GATED (9-11):      LEGAL, ENTITY, PROOF
 ///                            Suppressed at launch. Separate operator gates.
 ///                            LEGAL opens in V2-V3 with document verification.
 ///                            ENTITY opens in V2 with domain verification.
 ///                            PROOF opens in V4 with ZK infrastructure.
 ///
-///         SELF-SERVICE (11): RETRACTION
+///         SELF-SERVICE (12): RETRACTION
 ///                            Owner-initiated. Active at launch. Operator submits
 ///                            on behalf of creator after ownership token verification.
 ///
-///         REVIEW (12-14):   REVIEW, VOID, AFFIRMED
+///         REVIEW (13-15):    REVIEW, VOID, AFFIRMED
 ///                            AnchorRegistry operator-only. Active at launch.
 ///                            REVIEW: soft flag, anchor under review.
 ///                            VOID: hard finding, subtree condemned, cascades down.
 ///                            AFFIRMED: exoneration, review resolved.
 ///
-///         CATCH-ALL (15):    OTHER
+///         CATCH-ALL (16):    OTHER
 ///
 ///         Four access gates:
-///         onlyOperator      — types 0-7, 11-15
-///         onlyLegalOperator — type 8   (no operators added at deployment)
-///         onlyEntityOperator— type 9   (no operators added at deployment)
-///         onlyProofOperator — type 10  (no operators added at deployment)
+///         onlyOperator      — types 0-8, 12-16
+///         onlyLegalOperator — type 9   (no operators added at deployment)
+///         onlyEntityOperator— type 10  (no operators added at deployment)
+///         onlyProofOperator — type 11  (no operators added at deployment)
 
 contract AnchorRegistry {
 
@@ -49,18 +51,18 @@ contract AnchorRegistry {
     address public recoveryAddress;
 
     /// @notice Standard operators — content, retraction, review, and other types.
-    ///         Can register types 0-7, 11-15. Cannot call registerLegal, registerEntity, or registerProof.
+    ///         Can register types 0-8, 12-16. Cannot call registerLegal, registerEntity, or registerProof.
     mapping(address => bool) public operators;
 
-    /// @notice Legal operators — LEGAL registration only (type 8).
+    /// @notice Legal operators — LEGAL registration only (type 9).
     ///         Not added at deployment. Opens in V2-V3 with document verification.
     mapping(address => bool) public legalOperators;
 
-    /// @notice Entity operators — ENTITY registration only (type 9).
+    /// @notice Entity operators — ENTITY registration only (type 10).
     ///         Not added at deployment. Opens in V2 with domain verification.
     mapping(address => bool) public entityOperators;
 
-    /// @notice Proof operators — PROOF registration only (type 10).
+    /// @notice Proof operators — PROOF registration only (type 11).
     ///         Not added at deployment. Opens in V4 with ZK infrastructure.
     mapping(address => bool) public proofOperators;
 
@@ -112,27 +114,27 @@ contract AnchorRegistry {
         _;
     }
 
-    /// @notice Gate for standard registration (types 0-7, 11-15).
+    /// @notice Gate for standard registration (types 0-8, 12-16).
     modifier onlyOperator() {
         if (!operators[msg.sender]) revert NotOperator();
         _;
     }
 
-    /// @notice Gate for LEGAL registration (type 8). No operators added at launch.
+    /// @notice Gate for LEGAL registration (type 9). No operators added at launch.
     ///         Owner calls addLegalOperator() to activate in V2-V3.
     modifier onlyLegalOperator() {
         if (!legalOperators[msg.sender]) revert NotLegalOperator();
         _;
     }
 
-    /// @notice Gate for ENTITY registration (type 9). No operators added at launch.
+    /// @notice Gate for ENTITY registration (type 10). No operators added at launch.
     ///         Owner calls addEntityOperator() to activate in V2.
     modifier onlyEntityOperator() {
         if (!entityOperators[msg.sender]) revert NotEntityOperator();
         _;
     }
 
-    /// @notice Gate for PROOF registration (type 10). No operators added at launch.
+    /// @notice Gate for PROOF registration (type 11). No operators added at launch.
     ///         Owner calls addProofOperator() to activate in V4.
     modifier onlyProofOperator() {
         if (!proofOperators[msg.sender]) revert NotProofOperator();
@@ -165,7 +167,7 @@ contract AnchorRegistry {
         emit OperatorRemoved(op);
     }
 
-    /// @notice Add a legal operator. Opens LEGAL registration (type 8).
+    /// @notice Add a legal operator. Opens LEGAL registration (type 9).
     ///         Only call when document verification infrastructure is ready.
     ///         Legal operator is a cold wallet — LEGAL registrations are rare,
     ///         deliberate, and high-consequence.
@@ -180,7 +182,7 @@ contract AnchorRegistry {
         emit LegalOperatorRemoved(op);
     }
 
-    /// @notice Add an entity operator. Opens ENTITY registration (type 9).
+    /// @notice Add an entity operator. Opens ENTITY registration (type 10).
     ///         Only call when domain verification infrastructure is ready.
     ///         Entity operator is a cold wallet — ENTITY registrations are rare,
     ///         deliberate, and high-consequence.
@@ -195,7 +197,7 @@ contract AnchorRegistry {
         emit EntityOperatorRemoved(op);
     }
 
-    /// @notice Add a proof operator. Opens PROOF registration (type 10).
+    /// @notice Add a proof operator. Opens PROOF registration (type 11).
     ///         Only call when ZK proof infrastructure is ready (V4).
     ///         Proof operator is a cold wallet — PROOF registrations require
     ///         verified cryptographic proof infrastructure.
@@ -258,15 +260,15 @@ contract AnchorRegistry {
     // ARTIFACT TYPES
     // =========================================================================
 
-    /// @notice Sixteen artifact types in five logical groups.
+    /// @notice Seventeen artifact types in six logical groups.
     ///
-    ///         CONTENT (0-7)      — what creators make. Active at launch.
-    ///         GATED (8-10)       — suppressed. Separate operator gates.
-    ///         SELF-SERVICE (11)  — owner-initiated retraction. Active at launch.
-    ///         REVIEW (12-14)    — AnchorRegistry authority. Active at launch.
-    ///         CATCH-ALL (15)     — everything else. Active at launch.
+    ///         CONTENT (0-8)      — what creators make. Active at launch.
+    ///         GATED (9-11)       — suppressed. Separate operator gates.
+    ///         SELF-SERVICE (12)  — owner-initiated retraction. Active at launch.
+    ///         REVIEW (13-15)     — AnchorRegistry authority. Active at launch.
+    ///         CATCH-ALL (16)     — everything else. Active at launch.
     enum ArtifactType {
-        // ── CONTENT (0-7) ─────────────────────────────────────────────────
+        // ── CONTENT (0-8) ─────────────────────────────────────────────────
         CODE,        // 0  repos, packages, commits, scripts
         RESEARCH,    // 1  papers, whitepapers, preprints, theses
         DATA,        // 2  training data, benchmarks, databases
@@ -275,39 +277,43 @@ contract AnchorRegistry {
         MEDIA,       // 5  video, audio, images, photography
         TEXT,        // 6  blogs, articles, books, essays
         POST,        // 7  tweets, reddit, social
+        ONCHAIN,     // 8  Ethereum addresses, transactions, contracts,
+                     //    NFTs, token IDs, DAOs, multisigs
+                     //    on-chain asset provenance and identity claims
+                     //    onlyOperator.
 
-        // ── GATED (8-10) ──────────────────────────────────────────────────
-        LEGAL,       // 8  SUPPRESSED — contracts, patents, filings (V2-V3)
+        // ── GATED (9-11) ──────────────────────────────────────────────────
+        LEGAL,       // 9  contracts, patents, filings (V2-V3)
                      //    onlyLegalOperator. No operators at deployment.
-        ENTITY,      // 9  SUPPRESSED — persons, companies, institutions (V2)
+        ENTITY,      // 10 persons, companies, institutions (V2)
                      //    onlyEntityOperator. No operators at deployment.
-        PROOF,       // 10 SUPPRESSED — ZK proofs, cryptographic proofs,
+        PROOF,       // 11 ZK proofs, cryptographic proofs,
                      //    formal verifications (V4)
                      //    onlyProofOperator. No operators at deployment.
                      //    Single artifact proofs. Complex multi-artifact
                      //    compliance proofs handled by companion
                      //    AnchorRegistryZKP.sol contract.
 
-        // ── SELF-SERVICE (11) ─────────────────────────────────────────────
-        RETRACTION,  // 11 Owner-initiated. Operator submits on behalf of creator
+        // ── SELF-SERVICE (12) ─────────────────────────────────────────────
+        RETRACTION,  // 12 Owner-initiated. Operator submits on behalf of creator
                      //    after off-chain ownership token verification.
                      //    Creator is retracting their own work.
                      //    Not a finding of fraud — owner's autonomous choice.
 
-        // ── REVIEW (12-14) ───────────────────────────────────────────────
-        REVIEW,     // 12 Review opened. Attached to specific node under review.
+        // ── REVIEW (13-15) ────────────────────────────────────────────────
+        REVIEW,      // 13 Review opened. Attached to specific node under review.
                      //    Marks anchor CONTESTED. Provisional. Reversible.
                      //    onlyOperator.
-        VOID,        // 13 Hard finding. Attached to parent of fraud origin.
+        VOID,        // 14 Hard finding. Attached to parent of fraud origin.
                      //    Cascades DOWN. Does not cascade up.
                      //    Permanent unless AFFIRMED via appeal.
                      //    onlyOperator.
-        AFFIRMED,    // 14 Exoneration. Attached to REVIEW (found legitimate)
+        AFFIRMED,    // 15 Exoneration. Attached to REVIEW (found legitimate)
                      //    or VOID (appeal upheld, tree reinstated).
                      //    onlyOperator.
 
-        // ── CATCH-ALL (15) ────────────────────────────────────────────────
-        OTHER        // 15 catch all
+        // ── CATCH-ALL (16) ────────────────────────────────────────────────
+        OTHER        // 16 catch all
     }
 
     // =========================================================================
@@ -322,7 +328,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // CONTENT STRUCTS — types 0-7
+    // CONTENT STRUCTS — types 0-8
     // =========================================================================
 
     struct CodeAnchor     { AnchorBase base; string gitHash;      string license; string url; }
@@ -334,11 +340,26 @@ contract AnchorRegistry {
     struct TextAnchor     { AnchorBase base; string url; }
     struct PostAnchor     { AnchorBase base; string platform;     string url; }
 
+    /// @notice On-chain asset provenance. Ethereum addresses, transactions,
+    ///         contracts, NFTs, token IDs, DAOs, multisigs.
+    ///         assetId is the address, tx hash, or token ID being anchored.
+    ///         An ETH address anchor is an on-chain identity claim — the registrant
+    ///         asserts ownership of that address at this moment in time.
+    ///         chainId, assetType, and url are optional — empty string is valid.
+    struct OnChainAnchor {
+        AnchorBase base;
+        string chainId;    // "base" | "ethereum" | "polygon" | "arbitrum" | etc.
+        string assetType;  // "ADDRESS" | "TX" | "CONTRACT" | "NFT"
+                           // "TOKEN" | "DAO" | "MULTISIG" | "OTHER"
+        string assetId;    // the address, tx hash, token ID, or contract address
+        string url;        // optional — basescan.org/address/0x... etc.
+    }
+
     // =========================================================================
-    // GATED STRUCTS — types 8-10 (suppressed at launch)
+    // GATED STRUCTS — types 9-11 (suppressed at launch)
     // =========================================================================
 
-    /// @notice SUPPRESSED. Contracts, patents, filings, disclosures.
+    /// @notice Contracts, patents, filings, disclosures.
     ///         Requires document verification infrastructure.
     ///         Opens in V2-V3 when onlyLegalOperator operators are added.
     struct LegalAnchor {
@@ -347,7 +368,7 @@ contract AnchorRegistry {
         string url;
     }
 
-    /// @notice SUPPRESSED. Persons, companies, institutions, governments, AI systems.
+    /// @notice Persons, companies, institutions, governments, AI systems.
     ///         Requires domain verification infrastructure (DNS_TXT, GitHub, ORCID).
     ///         Opens in V2 when onlyEntityOperator operators are added.
     ///         claimedRoots stored off-chain in Supabase via canonicalUrl —
@@ -364,7 +385,7 @@ contract AnchorRegistry {
         string documentHash;        // SHA256 of canonical document
     }
 
-    /// @notice SUPPRESSED. ZK proofs, cryptographic proofs, formal verifications.
+    /// @notice ZK proofs, cryptographic proofs, formal verifications.
     ///         Requires ZK proof infrastructure. Opens in V4.
     ///         For single artifact proofs — e.g. ZK proof of authorship,
     ///         ZK proof of prior art, formal verification of a specific claim.
@@ -382,7 +403,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // SELF-SERVICE STRUCT — type 11
+    // SELF-SERVICE STRUCT — type 12
     // =========================================================================
 
     /// @notice Owner-initiated retraction. The creator is marking their own
@@ -401,7 +422,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REVIEW STRUCTS — types 12-14
+    // REVIEW STRUCTS — types 13-15
     // =========================================================================
 
     /// @notice Review opened. Attached to the specific node under review.
@@ -447,7 +468,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // CATCH-ALL STRUCT — type 15
+    // CATCH-ALL STRUCT — type 16
     // =========================================================================
 
     struct OtherAnchor {
@@ -462,7 +483,7 @@ contract AnchorRegistry {
     // STORAGE
     // =========================================================================
 
-    // Content anchors (types 0-7)
+    // Content anchors (types 0-8)
     mapping(string => CodeAnchor)       public codeAnchors;
     mapping(string => ResearchAnchor)   public researchAnchors;
     mapping(string => DataAnchor)       public dataAnchors;
@@ -471,21 +492,22 @@ contract AnchorRegistry {
     mapping(string => MediaAnchor)      public mediaAnchors;
     mapping(string => TextAnchor)       public textAnchors;
     mapping(string => PostAnchor)       public postAnchors;
+    mapping(string => OnChainAnchor)    public onChainAnchors;
 
-    // Gated anchors (types 8-10) — structs exist, register functions are gated
+    // Gated anchors (types 9-11) — structs exist, register functions are gated
     mapping(string => LegalAnchor)      public legalAnchors;
     mapping(string => EntityAnchor)     public entityAnchors;
     mapping(string => ProofAnchor)      public proofAnchors;
 
-    // Self-service anchors (type 11)
+    // Self-service anchors (type 12)
     mapping(string => RetractionAnchor) public retractionAnchors;
 
-    // ReviewA anchors (types 12-14)
-    mapping(string => ReviewAnchor)    public reviewAnchors;
+    // Review anchors (types 13-15)
+    mapping(string => ReviewAnchor)     public reviewAnchors;
     mapping(string => VoidAnchor)       public voidAnchors;
     mapping(string => AffirmedAnchor)   public affirmedAnchors;
 
-    // Catch-all anchors (type 15)
+    // Catch-all anchors (type 16)
     mapping(string => OtherAnchor)      public otherAnchors;
 
     /// @notice Global AR-ID collision prevention. Once registered, an AR-ID
@@ -576,7 +598,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — CONTENT (types 0-7)
+    // REGISTER FUNCTIONS — CONTENT (types 0-8)
     // =========================================================================
 
     function registerCode(
@@ -667,15 +689,35 @@ contract AnchorRegistry {
         _register(arId, base);
     }
 
+    /// @notice Registers an on-chain asset anchor: Ethereum addresses, transactions,
+    ///         contracts, NFTs, token IDs, DAOs, multisigs.
+    ///         An ETH address anchor is an on-chain identity claim — the registrant
+    ///         asserts that the anchored address belongs to them at this moment.
+    ///         Combined with parentHash, a wallet address anchor can serve as the
+    ///         trustless root of an entire artifact tree without ENTITY verification.
+    ///         chainId, assetType, and url are optional — empty string is valid.
+    function registerOnChain(
+        string calldata arId,
+        AnchorBase calldata base,
+        string calldata chainId,
+        string calldata assetType,
+        string calldata assetId,
+        string calldata url
+    ) external onlyOperator {
+        _validateBase(arId, base);
+        onChainAnchors[arId] = OnChainAnchor(base, chainId, assetType, assetId, url);
+        _register(arId, base);
+    }
+
     // =========================================================================
-    // REGISTER FUNCTIONS — GATED (types 8-10, suppressed at launch)
+    // REGISTER FUNCTIONS — GATED (types 9-11, suppressed at launch)
     // =========================================================================
 
-    /// @notice SUPPRESSED AT LAUNCH. No legalOperators added at deployment.
+    /// @notice LEGAL registration (type 9). Gate: onlyLegalOperator.
+    ///         No operators added at deployment — zero attack surface until activated.
     ///         Registers a legal document anchor: contracts, patents, filings.
-    ///         Will be opened in V2-V3 when document verification is ready.
-    ///         Owner must call addLegalOperator() to activate.
-    ///         Legal operator should be a cold wallet.
+    ///         Opens in V2-V3 when document verification infrastructure is ready.
+    ///         Owner calls addLegalOperator() to activate. Legal operator is a cold wallet.
     function registerLegal(
         string calldata arId,
         AnchorBase calldata base,
@@ -687,15 +729,14 @@ contract AnchorRegistry {
         _register(arId, base);
     }
 
-    /// @notice SUPPRESSED AT LAUNCH. No entityOperators added at deployment.
+    /// @notice ENTITY registration (type 10). Gate: onlyEntityOperator.
+    ///         No operators added at deployment — zero attack surface until activated.
     ///         Registers a verified entity anchor: person, company, institution.
-    ///         Will be opened in V2 when domain verification is ready.
-    ///         Owner must call addEntityOperator() to activate.
-    ///         Entity operator should be a cold wallet.
-    ///         claimedRoots is stored off-chain in Supabase and referenced
-    ///         via canonicalUrl. The immutable parentHash of existing V1 anchors
-    ///         cannot be modified, so entity-to-tree linkage is maintained
-    ///         in the canonical document and off-chain resolution layer.
+    ///         Opens in V2 when domain verification infrastructure is ready.
+    ///         Owner calls addEntityOperator() to activate. Entity operator is a cold wallet.
+    ///         claimedRoots stored off-chain in Supabase via canonicalUrl —
+    ///         immutable parentHash on V1 anchors cannot be modified retroactively,
+    ///         so entity-to-tree linkage is maintained in the resolution layer.
     function registerEntity(
         string calldata arId,
         AnchorBase calldata base,
@@ -719,12 +760,12 @@ contract AnchorRegistry {
         _register(arId, base);
     }
 
-    /// @notice SUPPRESSED AT LAUNCH. No proofOperators added at deployment.
+    /// @notice PROOF registration (type 11). Gate: onlyProofOperator.
+    ///         No operators added at deployment — zero attack surface until activated.
     ///         Registers a cryptographic proof artifact: ZK proofs, formal
     ///         verifications, cryptographic proofs of specific claims.
-    ///         Will be opened in V4 when ZK infrastructure is ready.
-    ///         Owner must call addProofOperator() to activate.
-    ///         Proof operator should be a cold wallet.
+    ///         Opens in V4 when ZK infrastructure is ready.
+    ///         Owner calls addProofOperator() to activate. Proof operator is a cold wallet.
     ///         For complex multi-artifact compliance proofs (e.g. proving
     ///         training data compliance across an entire model lineage),
     ///         use the companion AnchorRegistryZKP.sol contract which
@@ -743,7 +784,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — SELF-SERVICE (type 11)
+    // REGISTER FUNCTIONS — SELF-SERVICE (type 12)
     // =========================================================================
 
     /// @notice Register a RETRACTION on behalf of the anchor's owner.
@@ -769,7 +810,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — REVIEW SYSTEM (types 12-14)
+    // REGISTER FUNCTIONS — REVIEW SYSTEM (types 13-15)
     // =========================================================================
 
     /// @notice Attach a REVIEW anchor to a flagged node.
@@ -837,7 +878,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — CATCH-ALL (type 15)
+    // REGISTER FUNCTIONS — CATCH-ALL (type 16)
     // =========================================================================
 
     function registerOther(
