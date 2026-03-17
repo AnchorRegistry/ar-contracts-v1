@@ -72,10 +72,12 @@ contract AnchorRegistryTest is Test {
         });
     }
 
+    /// @dev Helper: register a CODE anchor with all fields
     function _code(string memory arId, string memory h) internal {
         vm.prank(operator);
-        registry.registerCode(arId, _base(AnchorRegistry.ArtifactType.CODE, h, "TEST"),
-            "git:abc", "MIT", "https://test");
+        registry.registerCode(arId,
+            _base(AnchorRegistry.ArtifactType.CODE, h, "TEST"),
+            "git:abc", "MIT", "TypeScript", "v1.0.0", "https://test");
     }
 
     function _review(string memory reviewArId, string memory targetArId) internal {
@@ -96,7 +98,8 @@ contract AnchorRegistryTest is Test {
 
     function test_RegisterCode() public {
         vm.prank(operator);
-        registry.registerCode("AR-CODE01", base, "git:abc", "MIT", "https://test");
+        registry.registerCode("AR-CODE01", base,
+            "git:abc", "MIT", "TypeScript", "v1.0.0", "https://test");
         assertTrue(registry.registered("AR-CODE01"));
     }
 
@@ -104,7 +107,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerResearch("AR-RES01",
             _base(AnchorRegistry.ArtifactType.RESEARCH, "sha256:res01", "PAPER"),
-            "10.1000/test", "https://arxiv.org/test");
+            "10.1000/test", "MIT", "Jane Smith, John Doe", "https://arxiv.org/test");
         assertTrue(registry.registered("AR-RES01"));
     }
 
@@ -112,7 +115,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerData("AR-DATA01",
             _base(AnchorRegistry.ArtifactType.DATA, "sha256:data01", "DATASET"),
-            "v1.0.0", "https://huggingface.co/test");
+            "v1.0.0", "CSV", "1000000", "https://schema.org/test", "https://huggingface.co/test");
         assertTrue(registry.registered("AR-DATA01"));
     }
 
@@ -120,7 +123,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerModel("AR-MDL01",
             _base(AnchorRegistry.ArtifactType.MODEL, "sha256:mdl01", "MODEL"),
-            "v1.0.0", "https://huggingface.co/test");
+            "v1.0.0", "Transformer", "7B", "CommonCrawl", "https://huggingface.co/test");
         assertTrue(registry.registered("AR-MDL01"));
     }
 
@@ -128,7 +131,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerAgent("AR-AGT01",
             _base(AnchorRegistry.ArtifactType.AGENT, "sha256:agt01", "AGENT"),
-            "v0.1.0", "https://github.com/test");
+            "v0.1.0", "Python 3.11", "web search, code execution", "https://github.com/test");
         assertTrue(registry.registered("AR-AGT01"));
     }
 
@@ -136,7 +139,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerMedia("AR-MED01",
             _base(AnchorRegistry.ArtifactType.MEDIA, "sha256:med01", "MEDIA"),
-            "image/png", "https://ipfs.io/test");
+            "image/png", "PNG", "1920x1080", "USRC17607839", "https://ipfs.io/test");
         assertTrue(registry.registered("AR-MED01"));
     }
 
@@ -144,7 +147,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerText("AR-TXT01",
             _base(AnchorRegistry.ArtifactType.TEXT, "sha256:txt01", "ARTICLE"),
-            "https://medium.com/test");
+            "978-3-16-148410-0", "O'Reilly Media", "English", "https://medium.com/test");
         assertTrue(registry.registered("AR-TXT01"));
     }
 
@@ -152,22 +155,49 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerPost("AR-PST01",
             _base(AnchorRegistry.ArtifactType.POST, "sha256:pst01", "TWEET"),
-            "X/Twitter", "https://x.com/test");
+            "X/Twitter", "1234567890", "2026-03-16", "https://x.com/test");
         assertTrue(registry.registered("AR-PST01"));
     }
 
-    function test_RegisterOnChain() public {
+    function test_RegisterOnChain_ByAddress() public {
         vm.prank(operator);
         registry.registerOnChain("AR-ONC01",
             _base(AnchorRegistry.ArtifactType.ONCHAIN, "sha256:onc01", "WALLET-CLAIM"),
-            "base", "ADDRESS", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+            "base", "ADDRESS",
+            "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+            "", "", "22041887",
             "https://basescan.org/address/0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
         assertTrue(registry.registered("AR-ONC01"));
     }
 
+    function test_RegisterOnChain_ByTxHash() public {
+        vm.prank(operator);
+        registry.registerOnChain("AR-ONC02",
+            _base(AnchorRegistry.ArtifactType.ONCHAIN, "sha256:onc02", "TX-CLAIM"),
+            "ethereum", "TX",
+            "",
+            "0xabc123def456abc123def456abc123def456abc123def456abc123def456abc123",
+            "", "19000000",
+            "https://etherscan.io/tx/0xabc123def456");
+        assertTrue(registry.registered("AR-ONC02"));
+    }
+
+    function test_RegisterOnChain_NFT_BothAddressAndTx() public {
+        vm.prank(operator);
+        registry.registerOnChain("AR-ONC03",
+            _base(AnchorRegistry.ArtifactType.ONCHAIN, "sha256:onc03", "NFT-CLAIM"),
+            "ethereum", "NFT",
+            "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d",
+            "0xdef789abc123def789abc123def789abc123def789abc123def789abc123def789",
+            "1234", "14000000",
+            "https://etherscan.io/token/0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d?a=1234");
+        assertTrue(registry.registered("AR-ONC03"));
+    }
+
     function test_BackupOperatorCanRegister() public {
         vm.prank(opBackup);
-        registry.registerCode("AR-BACK01", base, "git:backup", "MIT", "https://test");
+        registry.registerCode("AR-BACK01", base,
+            "git:backup", "MIT", "Python", "v2.0.0", "https://test");
         assertTrue(registry.registered("AR-BACK01"));
     }
 
@@ -187,11 +217,11 @@ contract AnchorRegistryTest is Test {
          string memory amt, string memory curr, string memory oid,,) =
             registry.receiptAnchors("AR-RCP01");
         assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.RECEIPT));
-        assertEq(rt,   "PURCHASE");
+        assertEq(rt,    "PURCHASE");
         assertEq(merch, "Wayfair");
-        assertEq(amt,  "1299.99");
-        assertEq(curr, "CAD");
-        assertEq(oid,  "ORDER-WF-2026-123456");
+        assertEq(amt,   "1299.99");
+        assertEq(curr,  "CAD");
+        assertEq(oid,   "ORDER-WF-2026-123456");
     }
 
     function test_Receipt_Medical_Succeeds() public {
@@ -201,7 +231,6 @@ contract AnchorRegistryTest is Test {
             "MEDICAL", "Shoppers Drug Mart", "48.50", "CAD",
             "RX-2026-789012", "", "");
         assertTrue(registry.registered("AR-RCP02"));
-
         (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP02");
         assertEq(rt, "MEDICAL");
     }
@@ -213,7 +242,6 @@ contract AnchorRegistryTest is Test {
             "FINANCIAL", "RBC Royal Bank", "50000.00", "CAD",
             "WIRE-2026-456789", "", "");
         assertTrue(registry.registered("AR-RCP03"));
-
         (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP03");
         assertEq(rt, "FINANCIAL");
     }
@@ -225,7 +253,6 @@ contract AnchorRegistryTest is Test {
             "GOVERNMENT", "Canada Revenue Agency", "12500.00", "CAD",
             "CRA-2026-TAX-654321", "", "https://cra.canada.ca/receipt/654321");
         assertTrue(registry.registered("AR-RCP04"));
-
         (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP04");
         assertEq(rt, "GOVERNMENT");
     }
@@ -237,7 +264,6 @@ contract AnchorRegistryTest is Test {
             "EVENT", "Ticketmaster", "189.50", "CAD",
             "TM-2026-987654", "ticketmaster", "https://ticketmaster.ca/orders/987654");
         assertTrue(registry.registered("AR-RCP05"));
-
         (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP05");
         assertEq(rt, "EVENT");
     }
@@ -249,13 +275,11 @@ contract AnchorRegistryTest is Test {
             "SERVICE", "Vancouver Plumbing Co.", "450.00", "CAD",
             "INV-2026-111222", "", "");
         assertTrue(registry.registered("AR-RCP06"));
-
         (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP06");
         assertEq(rt, "SERVICE");
     }
 
     function test_Receipt_MinimalFields_Succeeds() public {
-        // merchant, platform, url all optional — empty string valid
         vm.prank(operator);
         registry.registerReceipt("AR-RCP07",
             _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp07", "RECEIPT-MINIMAL"),
@@ -264,7 +288,6 @@ contract AnchorRegistryTest is Test {
     }
 
     function test_Receipt_ByStandardOperator_Succeeds() public {
-        // RECEIPT uses onlyOperator — standard operators can register
         vm.prank(opBackup);
         registry.registerReceipt("AR-RCP08",
             _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp08", "RECEIPT-BACKUP"),
@@ -306,8 +329,6 @@ contract AnchorRegistryTest is Test {
     }
 
     function test_Receipt_AsChildOfCode_Succeeds() public {
-        // A receipt can be a child of any registered anchor — e.g. proof of purchase
-        // anchored under the product's code anchor
         _code("AR-PRODUCT01", "sha256:product01");
         AnchorRegistry.AnchorBase memory b = _base(
             AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp12", "PURCHASE-PRODUCT01"
@@ -319,12 +340,11 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-RCP12"));
     }
 
-    function test_Receipt_EnumValue_Is9() public {
+    function test_Receipt_EnumValue_Is9() public pure {
         assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT), 9);
     }
 
-    function test_Receipt_GatedTypesShiftedCorrectly() public {
-        // Verify enum values shifted as expected after RECEIPT insertion at 9
+    function test_Receipt_GatedTypesShiftedCorrectly() public pure {
         assertEq(uint8(AnchorRegistry.ArtifactType.LEGAL),      10);
         assertEq(uint8(AnchorRegistry.ArtifactType.ENTITY),     11);
         assertEq(uint8(AnchorRegistry.ArtifactType.PROOF),      12);
@@ -339,9 +359,7 @@ contract AnchorRegistryTest is Test {
     // 3. GATED TYPES (10-12) — suppressed at launch
     // =========================================================================
 
-    // ── LEGAL (10) ────────────────────────────────────────────────────────────
-
-    function test_Legal_SuppressedAtLaunch() public {
+    function test_Legal_SuppressedAtLaunch() public view {
         assertFalse(registry.legalOperators(operator));
         assertFalse(registry.legalOperators(legalOp));
     }
@@ -351,7 +369,8 @@ contract AnchorRegistryTest is Test {
         vm.prank(legalOp);
         registry.registerLegal("AR-LGL01",
             _base(AnchorRegistry.ArtifactType.LEGAL, "sha256:lgl01", "TRADEMARK"),
-            "TRADEMARK", "https://cipo.ic.gc.ca/test");
+            "PATENT_APPLICATION", "Canada", "Ian Moore", "2026-03-16",
+            "https://cipo.ic.gc.ca/test");
         assertTrue(registry.registered("AR-LGL01"));
     }
 
@@ -360,7 +379,7 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(AnchorRegistry.NotLegalOperator.selector);
         registry.registerLegal("AR-LGL02",
             _base(AnchorRegistry.ArtifactType.LEGAL, "sha256:lgl02", "TRADEMARK"),
-            "TRADEMARK", "https://test");
+            "CONTRACT", "Delaware", "Acme Corp, Ian Moore", "2026-03-16", "https://test");
     }
 
     function test_Legal_RemovedOperator_Reverts() public {
@@ -370,12 +389,10 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(AnchorRegistry.NotLegalOperator.selector);
         registry.registerLegal("AR-LGL03",
             _base(AnchorRegistry.ArtifactType.LEGAL, "sha256:lgl03", "TRADEMARK"),
-            "TRADEMARK", "https://test");
+            "NDA", "UK", "Party A, Party B", "2026-01-01", "https://test");
     }
 
-    // ── ENTITY (11) ───────────────────────────────────────────────────────────
-
-    function test_Entity_SuppressedAtLaunch() public {
+    function test_Entity_SuppressedAtLaunch() public view {
         assertFalse(registry.entityOperators(operator));
         assertFalse(registry.entityOperators(entityOp));
     }
@@ -410,22 +427,35 @@ contract AnchorRegistryTest is Test {
             "PERSON", "icmoore.com", "DNS_TXT", "proof", "", "");
     }
 
-    // ── PROOF (12) ────────────────────────────────────────────────────────────
-
-    function test_Proof_SuppressedAtLaunch() public {
+    function test_Proof_SuppressedAtLaunch() public view {
         assertFalse(registry.proofOperators(operator));
         assertFalse(registry.proofOperators(proofOp));
     }
 
-    function test_Proof_ByProofOperator_Succeeds() public {
+    function test_Proof_ZK_ByProofOperator_Succeeds() public {
         vm.prank(owner); registry.addProofOperator(proofOp);
         vm.prank(proofOp);
         registry.registerProof("AR-PRF01",
             _base(AnchorRegistry.ArtifactType.PROOF, "sha256:prf01", "ZKP-2026"),
-            "GROTH16", "snarkjs",
-            "https://verifier.anchorregistry.ai/AR-PRF01",
+            "ZK_PROOF", "Groth16",
+            "circuit-v1-sha256", "sha256:vkeyhash01",
+            "", "",
+            "https://verifier.anchorregistry.ai/AR-PRF01", "",
             "sha256:proofhash01");
         assertTrue(registry.registered("AR-PRF01"));
+    }
+
+    function test_Proof_Audit_ByProofOperator_Succeeds() public {
+        vm.prank(owner); registry.addProofOperator(proofOp);
+        vm.prank(proofOp);
+        registry.registerProof("AR-PRF04",
+            _base(AnchorRegistry.ArtifactType.PROOF, "sha256:prf04", "AUDIT-2026"),
+            "SECURITY_AUDIT", "Manual Review",
+            "", "",
+            "Trail of Bits", "AnchorRegistry.sol v1.0",
+            "", "https://github.com/trailofbits/publications/test",
+            "sha256:auditreport01");
+        assertTrue(registry.registered("AR-PRF04"));
     }
 
     function test_Proof_ByStandardOperator_Reverts() public {
@@ -433,7 +463,9 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(AnchorRegistry.NotProofOperator.selector);
         registry.registerProof("AR-PRF02",
             _base(AnchorRegistry.ArtifactType.PROOF, "sha256:prf02", "ZKP"),
-            "GROTH16", "snarkjs", "https://test", "sha256:proof02");
+            "ZK_PROOF", "PLONK",
+            "circuit-v2", "sha256:vkey02",
+            "", "", "https://test", "", "sha256:proof02");
     }
 
     function test_Proof_RemovedOperator_Reverts() public {
@@ -443,7 +475,9 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(AnchorRegistry.NotProofOperator.selector);
         registry.registerProof("AR-PRF03",
             _base(AnchorRegistry.ArtifactType.PROOF, "sha256:prf03", "ZKP"),
-            "GROTH16", "snarkjs", "https://test", "sha256:proof03");
+            "ZK_PROOF", "STARKs",
+            "circuit-v3", "sha256:vkey03",
+            "", "", "https://test", "", "sha256:proof03");
     }
 
     function test_GatedOperatorsAreIndependent() public {
@@ -487,7 +521,8 @@ contract AnchorRegistryTest is Test {
         emit AnchorRegistry.Retracted("AR-RET02", "AR-V1", "AR-V2");
         registry.registerRetraction("AR-RET02", b, "AR-V1", "Superseded", "AR-V2");
 
-        (,string memory retTargetArId,,string memory retReplacedBy) = registry.retractionAnchors("AR-RET02");
+        // RetractionAnchor: (base, targetArId, reason, replacedBy)
+        (, string memory retTargetArId,, string memory retReplacedBy) = registry.retractionAnchors("AR-RET02");
         assertEq(retTargetArId, "AR-V1");
         assertEq(retReplacedBy, "AR-V2");
     }
@@ -514,11 +549,14 @@ contract AnchorRegistryTest is Test {
         _code("AR-ROOT", "sha256:root");
 
         vm.prank(operator);
-        registry.registerCode("AR-V1", _child("sha256:v1", "AR-ROOT"), "git:v1", "MIT", "https://test");
+        registry.registerCode("AR-V1", _child("sha256:v1", "AR-ROOT"),
+            "git:v1", "MIT", "Python", "v1.0.0", "https://test");
         vm.prank(operator);
-        registry.registerCode("AR-CHILD", _child("sha256:child", "AR-V1"), "git:child", "MIT", "https://test");
+        registry.registerCode("AR-CHILD", _child("sha256:child", "AR-V1"),
+            "git:child", "MIT", "Python", "v1.0.1", "https://test");
         vm.prank(operator);
-        registry.registerCode("AR-V2", _child("sha256:v2", "AR-ROOT"), "git:v2", "MIT", "https://test");
+        registry.registerCode("AR-V2", _child("sha256:v2", "AR-ROOT"),
+            "git:v2", "MIT", "Python", "v2.0.0", "https://test");
 
         AnchorRegistry.AnchorBase memory retb = _base(
             AnchorRegistry.ArtifactType.RETRACTION, "sha256:ret", "RETRACTION-V1"
@@ -527,18 +565,18 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerRetraction("AR-RET", retb, "AR-V1", "Superseded by V2", "AR-V2");
 
-        (,,,string memory retReplacedBy2) = registry.retractionAnchors("AR-RET");
-        assertEq(retReplacedBy2, "AR-V2");
+        // RetractionAnchor: (base, targetArId, reason, replacedBy)
+        (, , , string memory retReplacedBy) = registry.retractionAnchors("AR-RET");
+        assertEq(retReplacedBy, "AR-V2");
 
-        (AnchorRegistry.AnchorBase memory childBase,,, ) = registry.codeAnchors("AR-CHILD");
+        // CodeAnchor: (base, gitHash, license, language, version, url)
+        (AnchorRegistry.AnchorBase memory childBase,,,,,) = registry.codeAnchors("AR-CHILD");
         assertEq(childBase.parentHash, "AR-V1");
     }
 
     // =========================================================================
     // 5. REVIEW, VOID, AFFIRMED (types 14-16)
     // =========================================================================
-
-    // ── REVIEW (14) ───────────────────────────────────────────────────────────
 
     function test_Review_Succeeds() public {
         _code("AR-RTARGET01", "sha256:rtarget01");
@@ -580,8 +618,6 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
         registry.registerReview("AR-REV04", b, "AR-RTARGET02", "OTHER", "https://test");
     }
-
-    // ── VOID (15) ─────────────────────────────────────────────────────────────
 
     function test_Void_Succeeds() public {
         _review("AR-REV-V01", "AR-VTARGET01");
@@ -629,8 +665,6 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
         registry.registerVoid("AR-VOID04", b, "AR-VTARGET03", "AR-REV-V02", "https://test", "evidence");
     }
-
-    // ── AFFIRMED (16) ─────────────────────────────────────────────────────────
 
     function test_Affirmed_OnReview_Investigation() public {
         _review("AR-REV-A01", "AR-ATARGET01");
@@ -754,13 +788,15 @@ contract AnchorRegistryTest is Test {
     function test_StrangerCannotRegister() public {
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerCode("AR-FAIL01", base, "git:fail", "MIT", "https://test");
+        registry.registerCode("AR-FAIL01", base,
+            "git:fail", "MIT", "Python", "v1.0.0", "https://test");
     }
 
     function test_OwnerCannotRegisterContent() public {
         vm.prank(owner);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerCode("AR-FAIL02", base, "git:fail", "MIT", "https://test");
+        registry.registerCode("AR-FAIL02", base,
+            "git:fail", "MIT", "Python", "v1.0.0", "https://test");
     }
 
     function test_OwnerCanAddAndRemoveOperator() public {
@@ -774,7 +810,8 @@ contract AnchorRegistryTest is Test {
         vm.prank(owner); registry.removeOperator(operator);
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerCode("AR-FAIL03", base, "git:fail", "MIT", "https://test");
+        registry.registerCode("AR-FAIL03", base,
+            "git:fail", "MIT", "Python", "v1.0.0", "https://test");
     }
 
     function test_OwnerCanTransferOwnership() public {
@@ -811,7 +848,8 @@ contract AnchorRegistryTest is Test {
     function test_EmptyArId_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.EmptyArId.selector);
-        registry.registerCode("", base, "git:abc", "MIT", "https://test");
+        registry.registerCode("", base,
+            "git:abc", "MIT", "Python", "v1.0.0", "https://test");
     }
 
     function test_EmptyManifestHash_Reverts() public {
@@ -819,14 +857,15 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(AnchorRegistry.EmptyManifestHash.selector);
         registry.registerCode("AR-FAIL04",
             _base(AnchorRegistry.ArtifactType.CODE, "", "TEST"),
-            "git:abc", "MIT", "https://test");
+            "git:abc", "MIT", "Python", "v1.0.0", "https://test");
     }
 
     function test_DuplicateArId_Reverts() public {
         _code("AR-DUP01", "sha256:first");
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-DUP01"));
-        registry.registerCode("AR-DUP01", base, "git:abc", "MIT", "https://test");
+        registry.registerCode("AR-DUP01", base,
+            "git:abc", "MIT", "Python", "v1.0.0", "https://test");
     }
 
     function test_DuplicateArIdAcrossTypes_Reverts() public {
@@ -835,14 +874,14 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-CROSS01"));
         registry.registerText("AR-CROSS01",
             _base(AnchorRegistry.ArtifactType.TEXT, "sha256:cross02", "TEXT"),
-            "https://test");
+            "", "", "", "https://test");
     }
 
     function test_InvalidParentHash_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidParent.selector, "AR-DOESNOTEXIST"));
         registry.registerCode("AR-CHILD01", _child("sha256:child01", "AR-DOESNOTEXIST"),
-            "git:child", "MIT", "https://test");
+            "git:child", "MIT", "Python", "v1.0.0", "https://test");
     }
 
     // =========================================================================
@@ -853,7 +892,7 @@ contract AnchorRegistryTest is Test {
         _code("AR-ROOT01", "sha256:root");
         vm.prank(operator);
         registry.registerCode("AR-CHILD02", _child("sha256:child", "AR-ROOT01"),
-            "git:child", "MIT", "https://test");
+            "git:child", "MIT", "Rust", "v0.1.0", "https://test");
         assertTrue(registry.registered("AR-CHILD02"));
     }
 
@@ -864,7 +903,8 @@ contract AnchorRegistryTest is Test {
             string memory id     = string(abi.encodePacked("AR-L", vm.toString(i)));
             string memory h      = string(abi.encodePacked("sha256:l", vm.toString(i)));
             vm.prank(operator);
-            registry.registerCode(id, _child(h, parent), "git:l", "MIT", "https://test");
+            registry.registerCode(id, _child(h, parent),
+                "git:l", "MIT", "Go", "v1.0.0", "https://test");
         }
         assertTrue(registry.registered("AR-L5"));
     }
@@ -875,7 +915,8 @@ contract AnchorRegistryTest is Test {
             string memory id = string(abi.encodePacked("AR-SIB-", vm.toString(i)));
             string memory h  = string(abi.encodePacked("sha256:sib", vm.toString(i)));
             vm.prank(operator);
-            registry.registerCode(id, _child(h, "AR-PARENT01"), "git:sib", "MIT", "https://test");
+            registry.registerCode(id, _child(h, "AR-PARENT01"),
+                "git:sib", "MIT", "TypeScript", "v1.0.0", "https://test");
             assertTrue(registry.registered(id));
         }
     }
@@ -889,7 +930,8 @@ contract AnchorRegistryTest is Test {
             descriptor:   "PAPER-CHILD"
         });
         vm.prank(operator);
-        registry.registerResearch("AR-RES-CHILD", b, "10.1000/test", "https://arxiv.org/test");
+        registry.registerResearch("AR-RES-CHILD", b,
+            "10.1000/test", "MIT", "", "https://arxiv.org/test");
         assertTrue(registry.registered("AR-RES-CHILD"));
     }
 
@@ -905,7 +947,8 @@ contract AnchorRegistryTest is Test {
             AnchorRegistry.ArtifactType.CODE,
             "ICMOORE-2026-TEST", "sha256:abc123", ""
         );
-        registry.registerCode("AR-EVT01", base, "git:abc", "MIT", "https://test");
+        registry.registerCode("AR-EVT01", base,
+            "git:abc", "MIT", "TypeScript", "v1.0.0", "https://test");
     }
 
     function test_RetractedEvent() public {
@@ -1062,7 +1105,6 @@ contract AnchorRegistryTest is Test {
 
         vm.prank(newOwner); registry.removeOperator(attacker);
         assertFalse(registry.operators(attacker));
-
         vm.prank(newOwner); registry.addOperator(operator);
         assertTrue(registry.operators(operator));
     }

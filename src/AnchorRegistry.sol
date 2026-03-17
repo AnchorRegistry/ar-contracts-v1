@@ -56,20 +56,9 @@ contract AnchorRegistry {
     address public owner;
     address public recoveryAddress;
 
-    /// @notice Standard operators — content, transaction, retraction, review, and other types.
-    ///         Can register types 0-9, 13-17. Cannot call registerLegal, registerEntity, or registerProof.
     mapping(address => bool) public operators;
-
-    /// @notice Legal operators — LEGAL registration only (type 10).
-    ///         Not added at deployment. Opens in V2-V3 with document verification.
     mapping(address => bool) public legalOperators;
-
-    /// @notice Entity operators — ENTITY registration only (type 11).
-    ///         Not added at deployment. Opens in V2 with domain verification.
     mapping(address => bool) public entityOperators;
-
-    /// @notice Proof operators — PROOF registration only (type 12).
-    ///         Not added at deployment. Opens in V4 with ZK infrastructure.
     mapping(address => bool) public proofOperators;
 
     uint256 public constant RECOVERY_DELAY   = 7 days;
@@ -120,28 +109,21 @@ contract AnchorRegistry {
         _;
     }
 
-    /// @notice Gate for standard registration (types 0-9, 13-17).
     modifier onlyOperator() {
         if (!operators[msg.sender]) revert NotOperator();
         _;
     }
 
-    /// @notice Gate for LEGAL registration (type 10). No operators added at launch.
-    ///         Owner calls addLegalOperator() to activate in V2-V3.
     modifier onlyLegalOperator() {
         if (!legalOperators[msg.sender]) revert NotLegalOperator();
         _;
     }
 
-    /// @notice Gate for ENTITY registration (type 11). No operators added at launch.
-    ///         Owner calls addEntityOperator() to activate in V2.
     modifier onlyEntityOperator() {
         if (!entityOperators[msg.sender]) revert NotEntityOperator();
         _;
     }
 
-    /// @notice Gate for PROOF registration (type 12). No operators added at launch.
-    ///         Owner calls addProofOperator() to activate in V4.
     modifier onlyProofOperator() {
         if (!proofOperators[msg.sender]) revert NotProofOperator();
         _;
@@ -173,8 +155,6 @@ contract AnchorRegistry {
         emit OperatorRemoved(op);
     }
 
-    /// @notice Add a legal operator. Opens LEGAL registration (type 10).
-    ///         Only call when document verification infrastructure is ready.
     function addLegalOperator(address op) external onlyOwner {
         if (op == address(0)) revert ZeroAddress();
         legalOperators[op] = true;
@@ -186,8 +166,6 @@ contract AnchorRegistry {
         emit LegalOperatorRemoved(op);
     }
 
-    /// @notice Add an entity operator. Opens ENTITY registration (type 11).
-    ///         Only call when domain verification infrastructure is ready.
     function addEntityOperator(address op) external onlyOwner {
         if (op == address(0)) revert ZeroAddress();
         entityOperators[op] = true;
@@ -199,8 +177,6 @@ contract AnchorRegistry {
         emit EntityOperatorRemoved(op);
     }
 
-    /// @notice Add a proof operator. Opens PROOF registration (type 12).
-    ///         Only call when ZK proof infrastructure is ready (V4).
     function addProofOperator(address op) external onlyOwner {
         if (op == address(0)) revert ZeroAddress();
         proofOperators[op] = true;
@@ -260,68 +236,36 @@ contract AnchorRegistry {
     // ARTIFACT TYPES
     // =========================================================================
 
-    /// @notice Eighteen artifact types in six logical groups.
-    ///
-    ///         CONTENT (0-8)      — what creators make. Active at launch.
-    ///         TRANSACTION (9)    — proof of transaction or exchange. Active at launch.
-    ///         GATED (10-12)      — suppressed. Separate operator gates.
-    ///         SELF-SERVICE (13)  — owner-initiated retraction. Active at launch.
-    ///         REVIEW (14-16)     — AnchorRegistry authority. Active at launch.
-    ///         CATCH-ALL (17)     — everything else. Active at launch.
     enum ArtifactType {
         // ── CONTENT (0-8) ─────────────────────────────────────────────────
-        CODE,        // 0  repos, packages, commits, scripts
-        RESEARCH,    // 1  papers, whitepapers, preprints, theses
-        DATA,        // 2  training data, benchmarks, databases
-        MODEL,       // 3  AI models, weights, checkpoints
-        AGENT,       // 4  AI agents, bots, assistants
-        MEDIA,       // 5  video, audio, images, photography
-        TEXT,        // 6  blogs, articles, books, essays
-        POST,        // 7  tweets, reddit, social
-        ONCHAIN,     // 8  Ethereum addresses, transactions, contracts,
-                     //    NFTs, token IDs, DAOs, multisigs
-                     //    on-chain asset provenance and identity claims
-                     //    onlyOperator.
+        CODE,        // 0
+        RESEARCH,    // 1
+        DATA,        // 2
+        MODEL,       // 3
+        AGENT,       // 4
+        MEDIA,       // 5
+        TEXT,        // 6
+        POST,        // 7
+        ONCHAIN,     // 8
 
         // ── TRANSACTION (9) ───────────────────────────────────────────────
-        RECEIPT,     // 9  proof of commercial, medical, financial, government,
-                     //    event, or service transactions.
-                     //    receiptType field handles subtypes:
-                     //    PURCHASE | MEDICAL | FINANCIAL | GOVERNMENT | EVENT | SERVICE
-                     //    onlyOperator. Active at launch.
+        RECEIPT,     // 9
 
         // ── GATED (10-12) ─────────────────────────────────────────────────
-        LEGAL,       // 10 contracts, patents, filings (V2-V3)
-                     //    onlyLegalOperator. No operators at deployment.
-        ENTITY,      // 11 persons, companies, institutions (V2)
-                     //    onlyEntityOperator. No operators at deployment.
-        PROOF,       // 12 ZK proofs, cryptographic proofs,
-                     //    formal verifications (V4)
-                     //    onlyProofOperator. No operators at deployment.
-                     //    Single artifact proofs. Complex multi-artifact
-                     //    compliance proofs handled by companion
-                     //    AnchorRegistryZKP.sol contract.
+        LEGAL,       // 10
+        ENTITY,      // 11
+        PROOF,       // 12
 
         // ── SELF-SERVICE (13) ─────────────────────────────────────────────
-        RETRACTION,  // 13 Owner-initiated. Operator submits on behalf of creator
-                     //    after off-chain ownership token verification.
-                     //    Creator is retracting their own work.
-                     //    Not a finding of fraud — owner's autonomous choice.
+        RETRACTION,  // 13
 
         // ── REVIEW (14-16) ────────────────────────────────────────────────
-        REVIEW,      // 14 Review opened. Attached to specific node under review.
-                     //    Marks anchor CONTESTED. Provisional. Reversible.
-                     //    onlyOperator.
-        VOID,        // 15 Hard finding. Attached to parent of fraud origin.
-                     //    Cascades DOWN. Does not cascade up.
-                     //    Permanent unless AFFIRMED via appeal.
-                     //    onlyOperator.
-        AFFIRMED,    // 16 Exoneration. Attached to REVIEW (found legitimate)
-                     //    or VOID (appeal upheld, tree reinstated).
-                     //    onlyOperator.
+        REVIEW,      // 14
+        VOID,        // 15
+        AFFIRMED,    // 16
 
         // ── CATCH-ALL (17) ────────────────────────────────────────────────
-        OTHER        // 17 catch all
+        OTHER        // 17
     }
 
     // =========================================================================
@@ -330,7 +274,7 @@ contract AnchorRegistry {
 
     struct AnchorBase {
         ArtifactType artifactType;
-        string manifestHash;  // SHA256 of SPDX or DAPX manifest
+        string manifestHash;  // SHA256 of full manifest (all fields including off-chain)
         string parentHash;    // AR-ID of parent anchor, empty if root
         string descriptor;    // human-readable e.g. ICMOORE-2026-UNISWAPPY
     }
@@ -339,72 +283,183 @@ contract AnchorRegistry {
     // CONTENT STRUCTS — types 0-8
     // =========================================================================
 
-    struct CodeAnchor     { AnchorBase base; string gitHash;      string license; string url; }
-    struct ResearchAnchor { AnchorBase base; string doi;          string url; }
-    struct DataAnchor     { AnchorBase base; string dataVersion;  string url; }
-    struct ModelAnchor    { AnchorBase base; string modelVersion; string url; }
-    struct AgentAnchor    { AnchorBase base; string agentVersion; string url; }
-    struct MediaAnchor    { AnchorBase base; string mediaType;    string url; }
-    struct TextAnchor     { AnchorBase base; string url; }
-    struct PostAnchor     { AnchorBase base; string platform;     string url; }
+    /// @notice CODE — repos, packages, commits, scripts.
+    ///         gitHash: specific commit hash being anchored.
+    ///         license: SPDX license identifier e.g. MIT, Apache-2.0.
+    ///         language: primary language e.g. Python, TypeScript, Rust.
+    ///         version: semver e.g. v1.0.0.
+    ///         url: canonical repo URL e.g. github.com/user/repo.
+    struct CodeAnchor {
+        AnchorBase base;
+        string gitHash;   // commit hash
+        string license;   // SPDX identifier
+        string language;  // primary language
+        string version;   // semver
+        string url;       // repo URL
+    }
 
-    /// @notice On-chain asset provenance. Ethereum addresses, transactions,
-    ///         contracts, NFTs, token IDs, DAOs, multisigs.
+    /// @notice RESEARCH — papers, whitepapers, preprints, theses.
+    ///         doi: Digital Object Identifier e.g. 10.1234/example.
+    ///         institution: affiliated institution e.g. MIT, Stanford.
+    ///         coAuthors: comma-separated co-author names.
+    ///         url: canonical paper URL e.g. arxiv.org/abs/...
+    struct ResearchAnchor {
+        AnchorBase base;
+        string doi;         // DOI
+        string institution; // affiliated institution
+        string coAuthors;   // comma-separated co-authors
+        string url;         // paper URL
+    }
+
+    /// @notice DATA — datasets, benchmarks, databases.
+    ///         dataVersion: dataset version string.
+    ///         format: file format e.g. CSV, Parquet, JSON.
+    ///         rowCount: approximate row count as string e.g. "1000000".
+    ///         schemaUrl: URL to schema definition.
+    ///         url: canonical dataset URL or DOI.
+    struct DataAnchor {
+        AnchorBase base;
+        string dataVersion; // version
+        string format;      // CSV, Parquet, JSON, etc.
+        string rowCount;    // approximate size
+        string schemaUrl;   // schema definition URL
+        string url;         // dataset URL
+    }
+
+    /// @notice MODEL — AI models, weights, checkpoints.
+    ///         modelVersion: version string.
+    ///         architecture: model architecture e.g. Transformer, CNN.
+    ///         parameters: parameter count e.g. "7B", "70B".
+    ///         trainingDataset: training data description or URL.
+    ///         url: canonical model URL e.g. huggingface.co/...
+    struct ModelAnchor {
+        AnchorBase base;
+        string modelVersion;     // version
+        string architecture;     // Transformer, CNN, etc.
+        string parameters;       // 7B, 70B, etc.
+        string trainingDataset;  // training data reference
+        string url;              // model URL
+    }
+
+    /// @notice AGENT — AI agents, bots, assistants.
+    ///         agentVersion: version string.
+    ///         runtime: execution runtime e.g. Python 3.11, Node 20.
+    ///         capabilities: comma-separated capability list.
+    ///         url: canonical agent URL or repo.
+    struct AgentAnchor {
+        AnchorBase base;
+        string agentVersion;  // version
+        string runtime;       // Python 3.11, Node 20, etc.
+        string capabilities;  // comma-separated
+        string url;           // agent URL
+    }
+
+    /// @notice MEDIA — video, audio, images, photography.
+    ///         mediaType: MIME type or category e.g. video/mp4, image/png.
+    ///         format: specific format e.g. MP4, PNG, MP3.
+    ///         duration: duration or dimensions e.g. "3:45" or "1920x1080".
+    ///         isrc: ISRC or ISAN identifier for registered media.
+    ///         url: canonical media URL.
+    struct MediaAnchor {
+        AnchorBase base;
+        string mediaType;  // MIME type or category
+        string format;     // MP4, PNG, MP3, etc.
+        string duration;   // duration or dimensions
+        string isrc;       // ISRC / ISAN identifier
+        string url;        // media URL
+    }
+
+    /// @notice TEXT — blogs, articles, books, essays.
+    ///         isbn: ISBN for published books.
+    ///         publisher: publisher name.
+    ///         language: language of the text e.g. English, French.
+    ///         url: canonical text URL.
+    struct TextAnchor {
+        AnchorBase base;
+        string isbn;       // ISBN
+        string publisher;  // publisher name
+        string language;   // language
+        string url;        // text URL
+    }
+
+    /// @notice POST — tweets, reddit posts, social content.
+    ///         platform: social platform e.g. Twitter, LinkedIn, Farcaster.
+    ///         postId: platform-specific post ID.
+    ///         postDate: ISO 8601 date of the post e.g. 2026-03-16.
+    ///         url: direct URL to the post.
+    struct PostAnchor {
+        AnchorBase base;
+        string platform;  // Twitter, LinkedIn, Farcaster, etc.
+        string postId;    // platform post ID
+        string postDate;  // ISO 8601 date
+        string url;       // post URL
+    }
+
+    /// @notice ONCHAIN — Ethereum addresses, transactions, contracts, NFTs,
+    ///         token IDs, DAOs, multisigs. On-chain asset provenance.
+    ///         chainId: chain identifier e.g. ethereum, base, polygon.
+    ///         assetType: ADDRESS | TX | CONTRACT | NFT | TOKEN | DAO | MULTISIG | OTHER.
+    ///         contractAddress: smart contract address (0x...).
+    ///         txHash: transaction hash (0x...).
+    ///         tokenId: NFT or token ID.
+    ///         blockNumber: block number of the relevant transaction.
+    ///         url: explorer URL e.g. basescan.org/address/0x...
     struct OnChainAnchor {
         AnchorBase base;
-        string chainId;    // "base" | "ethereum" | "polygon" | "arbitrum" | etc.
-        string assetType;  // "ADDRESS" | "TX" | "CONTRACT" | "NFT"
-                           // "TOKEN" | "DAO" | "MULTISIG" | "OTHER"
-        string assetId;    // the address, tx hash, token ID, or contract address
-        string url;        // optional — basescan.org/address/0x... etc.
+        string chainId;          // ethereum, base, polygon, etc.
+        string assetType;        // ADDRESS | TX | CONTRACT | NFT | TOKEN | DAO | MULTISIG | OTHER
+        string contractAddress;  // 0x... (optional if using txHash)
+        string txHash;           // 0x... (optional if using contractAddress)
+        string tokenId;          // NFT or token ID
+        string blockNumber;      // block number
+        string url;              // explorer URL
     }
 
     // =========================================================================
     // TRANSACTION STRUCT — type 9
     // =========================================================================
 
-    /// @notice Proof of transaction or exchange. Active at launch. onlyOperator.
-    ///         The manifest hash is a SHA256 of the structured receipt data —
-    ///         merchant, amount, order ID, date, items. Anyone with the original
-    ///         receipt data can independently verify the hash matches.
-    ///         receiptType handles all transaction subtypes:
-    ///           PURCHASE   — retail, e-commerce, point of sale
-    ///           MEDICAL    — prescription, procedure, insurance payment
-    ///           FINANCIAL  — wire transfer, trade confirmation, crypto tx
-    ///           GOVERNMENT — tax payment, permit, filing acknowledgment
-    ///           EVENT      — ticket, boarding pass, hotel stay
-    ///           SERVICE    — contractor, mechanic, repair, professional service
+    /// @notice RECEIPT — proof of commercial, medical, financial, government,
+    ///         event, or service transactions. Active at launch.
+    ///         receiptType: PURCHASE | MEDICAL | FINANCIAL | GOVERNMENT | EVENT | SERVICE
+    ///         amount: string e.g. "1299.99" — preserves precision without float risk.
+    ///         currency: ISO 4217 code e.g. USD, CAD, EUR.
     struct ReceiptAnchor {
         AnchorBase base;
         string receiptType;  // PURCHASE | MEDICAL | FINANCIAL | GOVERNMENT | EVENT | SERVICE
         string merchant;     // merchant name or identifier
         string amount;       // transaction amount as string e.g. "1299.99"
-        string currency;     // ISO 4217 currency code e.g. "USD" | "CAD" | "EUR"
+        string currency;     // ISO 4217 currency code
         string orderId;      // merchant order ID or transaction reference
-        string platform;     // optional — "shopify" | "stripe" | "square" | etc.
-        string url;          // optional — receipt URL or IPFS hash
+        string platform;     // shopify | stripe | square | etc.
+        string url;          // receipt URL or IPFS hash
     }
 
     // =========================================================================
     // GATED STRUCTS — types 10-12 (suppressed at launch)
     // =========================================================================
 
-    /// @notice Contracts, patents, filings, disclosures.
-    ///         Requires document verification infrastructure.
-    ///         Opens in V2-V3 when onlyLegalOperator operators are added.
+    /// @notice LEGAL — contracts, patents, filings, disclosures.
+    ///         Opens in V2-V3 with onlyLegalOperator gate.
+    ///         docType: PATENT_APPLICATION | CONTRACT | COURT_FILING | DISCLOSURE | NDA | OTHER
+    ///         jurisdiction: legal jurisdiction e.g. Delaware, UK, Canada.
+    ///         parties: comma-separated parties to the document.
+    ///         effectiveDate: ISO 8601 effective date e.g. 2026-03-16.
+    ///         url: document URL or IPFS hash.
     struct LegalAnchor {
         AnchorBase base;
-        string docType;  // PATENT_APPLICATION | CONTRACT | COURT_FILING | DISCLOSURE
-        string url;
+        string docType;        // document type
+        string jurisdiction;   // legal jurisdiction
+        string parties;        // comma-separated parties
+        string effectiveDate;  // ISO 8601 date
+        string url;            // document URL
     }
 
-    /// @notice Persons, companies, institutions, governments, AI systems.
-    ///         Requires domain verification infrastructure (DNS_TXT, GitHub, ORCID).
-    ///         Opens in V2 when onlyEntityOperator operators are added.
+    /// @notice ENTITY — persons, companies, institutions, governments, AI systems.
+    ///         Opens in V2 with onlyEntityOperator gate.
     struct EntityAnchor {
         AnchorBase base;
-        string entityType;          // PERSON | COMPANY | INSTITUTION | GOVERNMENT
-                                    // AI_SYSTEM | RESEARCH_GROUP | PROTOCOL
+        string entityType;          // PERSON | COMPANY | INSTITUTION | GOVERNMENT | AI_SYSTEM | OTHER
         string entityDomain;        // canonical domain e.g. icmoore.com
         string verificationMethod;  // DNS_TXT | GITHUB | ORCID | EMAIL
         string verificationProof;   // the specific proof string used
@@ -412,14 +467,27 @@ contract AnchorRegistry {
         string documentHash;        // SHA256 of canonical document
     }
 
-    /// @notice ZK proofs, cryptographic proofs, formal verifications.
-    ///         Requires ZK proof infrastructure. Opens in V4.
+    /// @notice PROOF — ZK proofs, cryptographic proofs, formal verifications, security audits.
+    ///         Opens in V4 with onlyProofOperator gate.
+    ///         proofType: ZK_PROOF | FORMAL_VERIFICATION | SECURITY_AUDIT | MATHEMATICAL | OTHER
+    ///         proofSystem: Groth16 | PLONK | STARKs | Halo2 | Coq | Lean4 | Isabelle | snarkjs | etc.
+    ///         circuitId: ZK circuit identifier.
+    ///         vkeyHash: verification key hash (ZK proofs).
+    ///         auditFirm: audit firm name (security audits).
+    ///         auditScope: scope of the audit.
+    ///         verifierUrl: on-chain verifier contract or URL.
+    ///         reportUrl: audit report or paper URL.
+    ///         proofHash: hash of the proof artifact itself.
     struct ProofAnchor {
         AnchorBase base;
-        string proofType;    // ZK_PROOF | GROTH16 | PLONK | STARK
-                             // FORMAL_VERIFICATION | OTHER
-        string proofSystem;  // the specific proof system used
-        string verifierUrl;  // on-chain verifier contract address or URL
+        string proofType;    // ZK_PROOF | FORMAL_VERIFICATION | SECURITY_AUDIT | MATHEMATICAL | OTHER
+        string proofSystem;  // Groth16, PLONK, STARKs, Coq, Lean4, etc.
+        string circuitId;    // ZK circuit ID
+        string vkeyHash;     // verification key hash
+        string auditFirm;    // audit firm (security audits)
+        string auditScope;   // scope of audit
+        string verifierUrl;  // verifier contract or URL
+        string reportUrl;    // report or paper URL
         string proofHash;    // hash of the proof itself
     }
 
@@ -427,31 +495,24 @@ contract AnchorRegistry {
     // SELF-SERVICE STRUCT — type 13
     // =========================================================================
 
-    /// @notice Owner-initiated retraction. The creator is marking their own
-    ///         anchor as retracted. Not a finding of fraud — an autonomous
-    ///         choice by the registrant.
     struct RetractionAnchor {
         AnchorBase base;
-        string targetArId;   // the anchor being retracted
-        string reason;       // optional, owner-provided free text
-        string replacedBy;   // optional AR-ID of replacement anchor
+        string targetArId;  // the anchor being retracted
+        string reason;      // optional, owner-provided free text
+        string replacedBy;  // optional AR-ID of replacement anchor
     }
 
     // =========================================================================
     // REVIEW STRUCTS — types 14-16
     // =========================================================================
 
-    /// @notice Review opened. Attached to the specific node under review.
     struct ReviewAnchor {
         AnchorBase base;
         string targetArId;  // the AR-ID of the anchor being reviewed
-        string reviewType;  // MALICIOUS_TREE | IMPERSONATION | FALSE_AUTHORSHIP
-                            // DEFAMATORY | OTHER
+        string reviewType;  // MALICIOUS_TREE | IMPERSONATION | FALSE_AUTHORSHIP | DEFAMATORY | OTHER
         string evidenceUrl; // anchorregistry.com/reviews/[review-ar-id]
     }
 
-    /// @notice Hard finding. Attached to the PARENT of the fraud origin.
-    ///         Cascades DOWN — all descendants are condemned (VOID).
     struct VoidAnchor {
         AnchorBase base;
         string targetArId;  // the parent AR-ID being condemned
@@ -460,7 +521,6 @@ contract AnchorRegistry {
         string evidence;    // brief on-chain evidence summary
     }
 
-    /// @notice Exoneration. Attached to a REVIEW or VOID anchor.
     struct AffirmedAnchor {
         AnchorBase base;
         string targetArId;  // the REVIEW or VOID AR-ID being affirmed
@@ -484,7 +544,6 @@ contract AnchorRegistry {
     // STORAGE
     // =========================================================================
 
-    // Content anchors (types 0-8)
     mapping(string => CodeAnchor)       public codeAnchors;
     mapping(string => ResearchAnchor)   public researchAnchors;
     mapping(string => DataAnchor)       public dataAnchors;
@@ -494,27 +553,16 @@ contract AnchorRegistry {
     mapping(string => TextAnchor)       public textAnchors;
     mapping(string => PostAnchor)       public postAnchors;
     mapping(string => OnChainAnchor)    public onChainAnchors;
-
-    // Transaction anchors (type 9)
     mapping(string => ReceiptAnchor)    public receiptAnchors;
-
-    // Gated anchors (types 10-12) — structs exist, register functions are gated
     mapping(string => LegalAnchor)      public legalAnchors;
     mapping(string => EntityAnchor)     public entityAnchors;
     mapping(string => ProofAnchor)      public proofAnchors;
-
-    // Self-service anchors (type 13)
     mapping(string => RetractionAnchor) public retractionAnchors;
-
-    // Review anchors (types 14-16)
     mapping(string => ReviewAnchor)     public reviewAnchors;
     mapping(string => VoidAnchor)       public voidAnchors;
     mapping(string => AffirmedAnchor)   public affirmedAnchors;
-
-    // Catch-all anchors (type 17)
     mapping(string => OtherAnchor)      public otherAnchors;
 
-    /// @notice Global AR-ID collision prevention.
     mapping(string => bool) public registered;
 
     // =========================================================================
@@ -530,31 +578,10 @@ contract AnchorRegistry {
         string          parentHash
     );
 
-    event Retracted(
-        string  indexed arId,
-        string  indexed targetArId,
-        string          replacedBy
-    );
-
-    event Reviewed(
-        string  indexed arId,
-        string  indexed targetArId,
-        string          reviewType,
-        string          evidenceUrl
-    );
-
-    event Voided(
-        string  indexed arId,
-        string  indexed targetArId,
-        string  indexed reviewArId,
-        string          evidence
-    );
-
-    event Affirmed(
-        string  indexed arId,
-        string  indexed targetArId,
-        string          affirmedBy
-    );
+    event Retracted(string indexed arId, string indexed targetArId, string replacedBy);
+    event Reviewed(string indexed arId, string indexed targetArId, string reviewType, string evidenceUrl);
+    event Voided(string indexed arId, string indexed targetArId, string indexed reviewArId, string evidence);
+    event Affirmed(string indexed arId, string indexed targetArId, string affirmedBy);
 
     // =========================================================================
     // ERRORS
@@ -598,10 +625,12 @@ contract AnchorRegistry {
         AnchorBase calldata base,
         string calldata gitHash,
         string calldata license,
+        string calldata language,
+        string calldata version,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        codeAnchors[arId] = CodeAnchor(base, gitHash, license, url);
+        codeAnchors[arId] = CodeAnchor(base, gitHash, license, language, version, url);
         _register(arId, base);
     }
 
@@ -609,10 +638,12 @@ contract AnchorRegistry {
         string calldata arId,
         AnchorBase calldata base,
         string calldata doi,
+        string calldata institution,
+        string calldata coAuthors,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        researchAnchors[arId] = ResearchAnchor(base, doi, url);
+        researchAnchors[arId] = ResearchAnchor(base, doi, institution, coAuthors, url);
         _register(arId, base);
     }
 
@@ -620,10 +651,13 @@ contract AnchorRegistry {
         string calldata arId,
         AnchorBase calldata base,
         string calldata dataVersion,
+        string calldata format,
+        string calldata rowCount,
+        string calldata schemaUrl,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        dataAnchors[arId] = DataAnchor(base, dataVersion, url);
+        dataAnchors[arId] = DataAnchor(base, dataVersion, format, rowCount, schemaUrl, url);
         _register(arId, base);
     }
 
@@ -631,10 +665,13 @@ contract AnchorRegistry {
         string calldata arId,
         AnchorBase calldata base,
         string calldata modelVersion,
+        string calldata architecture,
+        string calldata parameters,
+        string calldata trainingDataset,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        modelAnchors[arId] = ModelAnchor(base, modelVersion, url);
+        modelAnchors[arId] = ModelAnchor(base, modelVersion, architecture, parameters, trainingDataset, url);
         _register(arId, base);
     }
 
@@ -642,10 +679,12 @@ contract AnchorRegistry {
         string calldata arId,
         AnchorBase calldata base,
         string calldata agentVersion,
+        string calldata runtime,
+        string calldata capabilities,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        agentAnchors[arId] = AgentAnchor(base, agentVersion, url);
+        agentAnchors[arId] = AgentAnchor(base, agentVersion, runtime, capabilities, url);
         _register(arId, base);
     }
 
@@ -653,20 +692,26 @@ contract AnchorRegistry {
         string calldata arId,
         AnchorBase calldata base,
         string calldata mediaType,
+        string calldata format,
+        string calldata duration,
+        string calldata isrc,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        mediaAnchors[arId] = MediaAnchor(base, mediaType, url);
+        mediaAnchors[arId] = MediaAnchor(base, mediaType, format, duration, isrc, url);
         _register(arId, base);
     }
 
     function registerText(
         string calldata arId,
         AnchorBase calldata base,
+        string calldata isbn,
+        string calldata publisher,
+        string calldata language,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        textAnchors[arId] = TextAnchor(base, url);
+        textAnchors[arId] = TextAnchor(base, isbn, publisher, language, url);
         _register(arId, base);
     }
 
@@ -674,23 +719,32 @@ contract AnchorRegistry {
         string calldata arId,
         AnchorBase calldata base,
         string calldata platform,
+        string calldata postId,
+        string calldata postDate,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        postAnchors[arId] = PostAnchor(base, platform, url);
+        postAnchors[arId] = PostAnchor(base, platform, postId, postDate, url);
         _register(arId, base);
     }
 
+    /// @notice Register an ONCHAIN anchor. Supports both contract address
+    ///         and transaction hash — provide one or both, same as Etherscan lookup.
     function registerOnChain(
         string calldata arId,
         AnchorBase calldata base,
         string calldata chainId,
         string calldata assetType,
-        string calldata assetId,
+        string calldata contractAddress,
+        string calldata txHash,
+        string calldata tokenId,
+        string calldata blockNumber,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        onChainAnchors[arId] = OnChainAnchor(base, chainId, assetType, assetId, url);
+        onChainAnchors[arId] = OnChainAnchor(
+            base, chainId, assetType, contractAddress, txHash, tokenId, blockNumber, url
+        );
         _register(arId, base);
     }
 
@@ -698,14 +752,6 @@ contract AnchorRegistry {
     // REGISTER FUNCTIONS — TRANSACTION (type 9)
     // =========================================================================
 
-    /// @notice Register a RECEIPT anchor. Active at launch. onlyOperator.
-    ///         The manifest hash is a SHA256 of the structured receipt data.
-    ///         Anyone with the original receipt data can independently verify
-    ///         the hash matches — no external verification infrastructure required.
-    ///         receiptType: PURCHASE | MEDICAL | FINANCIAL | GOVERNMENT | EVENT | SERVICE
-    ///         amount: string e.g. "1299.99" — preserve precision without float risk.
-    ///         currency: ISO 4217 code e.g. "USD" | "CAD" | "EUR".
-    ///         merchant, orderId, platform, url: all optional — empty string valid.
     function registerReceipt(
         string calldata arId,
         AnchorBase calldata base,
@@ -732,10 +778,13 @@ contract AnchorRegistry {
         string calldata arId,
         AnchorBase calldata base,
         string calldata docType,
+        string calldata jurisdiction,
+        string calldata parties,
+        string calldata effectiveDate,
         string calldata url
     ) external onlyLegalOperator {
         _validateBase(arId, base);
-        legalAnchors[arId] = LegalAnchor(base, docType, url);
+        legalAnchors[arId] = LegalAnchor(base, docType, jurisdiction, parties, effectiveDate, url);
         _register(arId, base);
     }
 
@@ -763,11 +812,19 @@ contract AnchorRegistry {
         AnchorBase calldata base,
         string calldata proofType,
         string calldata proofSystem,
+        string calldata circuitId,
+        string calldata vkeyHash,
+        string calldata auditFirm,
+        string calldata auditScope,
         string calldata verifierUrl,
+        string calldata reportUrl,
         string calldata proofHash
     ) external onlyProofOperator {
         _validateBase(arId, base);
-        proofAnchors[arId] = ProofAnchor(base, proofType, proofSystem, verifierUrl, proofHash);
+        proofAnchors[arId] = ProofAnchor(
+            base, proofType, proofSystem, circuitId, vkeyHash,
+            auditFirm, auditScope, verifierUrl, reportUrl, proofHash
+        );
         _register(arId, base);
     }
 
