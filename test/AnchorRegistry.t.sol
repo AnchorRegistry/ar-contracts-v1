@@ -9,20 +9,21 @@ import "forge-std/Test.sol";
 import "../src/AnchorRegistry.sol";
 
 /// @title  AnchorRegistryTest
-/// @notice Foundry test suite for AnchorRegistry.sol (18 artifact types).
+/// @notice Foundry test suite for AnchorRegistry.sol (19 artifact types).
 ///
 ///         Sections:
 ///         1.  Content types (0-8)
-///         2.  Transaction types (9) — RECEIPT
-///         3.  Gated types (10-12) — LEGAL, ENTITY, PROOF
-///         4.  RETRACTION (type 13)
-///         5.  REVIEW, VOID, AFFIRMED (types 14-16)
-///         6.  OTHER (type 17)
-///         7.  Access control
-///         8.  Edge cases & validation
-///         9.  Tree integrity
-///         10. Events
-///         11. Recovery & griefing defence
+///         2.  Lifecycle types (9) — EVENT
+///         3.  Transaction types (10) — RECEIPT
+///         4.  Gated types (11-13) — LEGAL, ENTITY, PROOF
+///         5.  RETRACTION (type 14)
+///         6.  REVIEW, VOID, AFFIRMED (types 15-17)
+///         7.  OTHER (type 18)
+///         8.  Access control
+///         9.  Edge cases & validation
+///         10. Tree integrity
+///         11. Events
+///         12. Recovery & griefing defence
 
 contract AnchorRegistryTest is Test {
 
@@ -202,7 +203,173 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 2. TRANSACTION TYPES (9) — RECEIPT
+    // 2. LIFECYCLE TYPES (9) — EVENT
+    // =========================================================================
+
+    function test_Event_EnumValue_Is9() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT), 9);
+    }
+
+    function test_Event_Conference_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN01",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn01", "ETHDENVER-2026"),
+            "CONFERENCE", "2026-02-23", "Denver, CO", "ETHDenver",
+            "https://ethdenver.com/2026");
+        assertTrue(registry.registered("AR-EVN01"));
+
+        (AnchorRegistry.AnchorBase memory b, string memory et, string memory ed,
+         string memory loc, string memory org, string memory url) =
+            registry.eventAnchors("AR-EVN01");
+        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.EVENT));
+        assertEq(et,  "CONFERENCE");
+        assertEq(ed,  "2026-02-23");
+        assertEq(loc, "Denver, CO");
+        assertEq(org, "ETHDenver");
+        assertEq(url, "https://ethdenver.com/2026");
+    }
+
+    function test_Event_Launch_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN02",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn02", "ANCHORREGISTRY-LAUNCH"),
+            "LAUNCH", "2026-03-19", "online", "AnchorRegistry",
+            "https://anchorregistry.com");
+        assertTrue(registry.registered("AR-EVN02"));
+        (, string memory et,,,,) = registry.eventAnchors("AR-EVN02");
+        assertEq(et, "LAUNCH");
+    }
+
+    function test_Event_Governance_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN03",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn03", "DAO-VOTE-001"),
+            "GOVERNANCE", "2026-03-10", "on-chain", "Uniswap DAO",
+            "https://app.uniswap.org/vote/1");
+        assertTrue(registry.registered("AR-EVN03"));
+        (, string memory et,,,,) = registry.eventAnchors("AR-EVN03");
+        assertEq(et, "GOVERNANCE");
+    }
+
+    function test_Event_Performance_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN04",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn04", "CONCERT-2026"),
+            "PERFORMANCE", "2026-06-15T20:00:00Z", "Rogers Centre, Toronto", "Live Nation",
+            "https://livenation.com/events/test");
+        assertTrue(registry.registered("AR-EVN04"));
+        (, string memory et,,,,) = registry.eventAnchors("AR-EVN04");
+        assertEq(et, "PERFORMANCE");
+    }
+
+    function test_Event_Milestone_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN05",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn05", "BASE-1M-TX"),
+            "MILESTONE", "2026-01-01", "on-chain", "Base",
+            "https://basescan.org/block/25000000");
+        assertTrue(registry.registered("AR-EVN05"));
+        (, string memory et,,,,) = registry.eventAnchors("AR-EVN05");
+        assertEq(et, "MILESTONE");
+    }
+
+    function test_Event_Competition_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN06",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn06", "HACKATHON-2026"),
+            "COMPETITION", "2026-04-01", "online", "ETHGlobal",
+            "https://ethglobal.com/events/test");
+        assertTrue(registry.registered("AR-EVN06"));
+        (, string memory et,,,,) = registry.eventAnchors("AR-EVN06");
+        assertEq(et, "COMPETITION");
+    }
+
+    function test_Event_Other_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN07",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn07", "EVENT-OTHER"),
+            "OTHER", "2026-05-01", "Vancouver, BC", "Ian Moore",
+            "https://test.com");
+        assertTrue(registry.registered("AR-EVN07"));
+    }
+
+    function test_Event_MinimalFields_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN08",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn08", "EVENT-MINIMAL"),
+            "LAUNCH", "2026-03-19", "", "", "");
+        assertTrue(registry.registered("AR-EVN08"));
+    }
+
+    function test_Event_ByBackupOperator_Succeeds() public {
+        vm.prank(opBackup);
+        registry.registerEvent("AR-EVN09",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn09", "EVENT-BACKUP"),
+            "CONFERENCE", "2026-09-01", "Berlin", "Devcon",
+            "https://devcon.org");
+        assertTrue(registry.registered("AR-EVN09"));
+    }
+
+    function test_Event_ByStranger_Reverts() public {
+        vm.prank(stranger);
+        vm.expectRevert(AnchorRegistry.NotOperator.selector);
+        registry.registerEvent("AR-EVN10",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn10", "EVENT-STRANGER"),
+            "LAUNCH", "2026-03-19", "online", "Attacker", "https://test.com");
+    }
+
+    function test_Event_DuplicateArId_Reverts() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN11",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn11", "EVENT"),
+            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "");
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-EVN11"));
+        registry.registerEvent("AR-EVN11",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn11b", "EVENT"),
+            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "");
+    }
+
+    function test_Event_AnchoredEvent_Emitted() public {
+        vm.prank(operator);
+        vm.expectEmit(true, true, false, true);
+        emit AnchorRegistry.Anchored(
+            "AR-EVN12", operator,
+            AnchorRegistry.ArtifactType.EVENT,
+            "ANCHORREGISTRY-LAUNCH", "sha256:evn12", ""
+        );
+        registry.registerEvent("AR-EVN12",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn12", "ANCHORREGISTRY-LAUNCH"),
+            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
+    }
+
+    function test_Event_AsChildOfCode_Succeeds() public {
+        _code("AR-PROJECT01", "sha256:project01");
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.EVENT, "sha256:evn13", "LAUNCH-PROJECT01"
+        );
+        b.parentHash = "AR-PROJECT01";
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN13", b,
+            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
+        assertTrue(registry.registered("AR-EVN13"));
+    }
+
+    function test_Event_EnumShift_AllTypesCorrect() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT),      9);
+        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT),    10);
+        assertEq(uint8(AnchorRegistry.ArtifactType.LEGAL),      11);
+        assertEq(uint8(AnchorRegistry.ArtifactType.ENTITY),     12);
+        assertEq(uint8(AnchorRegistry.ArtifactType.PROOF),      13);
+        assertEq(uint8(AnchorRegistry.ArtifactType.RETRACTION), 14);
+        assertEq(uint8(AnchorRegistry.ArtifactType.REVIEW),     15);
+        assertEq(uint8(AnchorRegistry.ArtifactType.VOID),       16);
+        assertEq(uint8(AnchorRegistry.ArtifactType.AFFIRMED),   17);
+        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      18);
+    }
+
+    // =========================================================================
+    // 3. TRANSACTION TYPES (10) — RECEIPT
     // =========================================================================
 
     function test_Receipt_Purchase_Succeeds() public {
@@ -340,23 +507,12 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-RCP12"));
     }
 
-    function test_Receipt_EnumValue_Is9() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT), 9);
-    }
-
-    function test_Receipt_GatedTypesShiftedCorrectly() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.LEGAL),      10);
-        assertEq(uint8(AnchorRegistry.ArtifactType.ENTITY),     11);
-        assertEq(uint8(AnchorRegistry.ArtifactType.PROOF),      12);
-        assertEq(uint8(AnchorRegistry.ArtifactType.RETRACTION), 13);
-        assertEq(uint8(AnchorRegistry.ArtifactType.REVIEW),     14);
-        assertEq(uint8(AnchorRegistry.ArtifactType.VOID),       15);
-        assertEq(uint8(AnchorRegistry.ArtifactType.AFFIRMED),   16);
-        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      17);
+    function test_Receipt_EnumValue_Is10() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT), 10);
     }
 
     // =========================================================================
-    // 3. GATED TYPES (10-12) — suppressed at launch
+    // 4. GATED TYPES (11-13) — suppressed at launch
     // =========================================================================
 
     function test_Legal_SuppressedAtLaunch() public view {
@@ -495,7 +651,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 4. RETRACTION (type 13)
+    // 5. RETRACTION (type 14)
     // =========================================================================
 
     function test_Retraction_Succeeds() public {
@@ -575,7 +731,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 5. REVIEW, VOID, AFFIRMED (types 14-16)
+    // 6. REVIEW, VOID, AFFIRMED (types 15-17)
     // =========================================================================
 
     function test_Review_Succeeds() public {
@@ -760,7 +916,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 6. OTHER (type 17)
+    // 7. OTHER (type 18)
     // =========================================================================
 
     function test_RegisterOther() public {
@@ -772,7 +928,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 7. ACCESS CONTROL
+    // 8. ACCESS CONTROL
     // =========================================================================
 
     function test_OwnerAndRecoverySetOnDeploy() public view {
@@ -842,7 +998,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 8. EDGE CASES & VALIDATION
+    // 9. EDGE CASES & VALIDATION
     // =========================================================================
 
     function test_EmptyArId_Reverts() public {
@@ -885,7 +1041,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 9. TREE INTEGRITY
+    // 10. TREE INTEGRITY
     // =========================================================================
 
     function test_ValidParentHash_Succeeds() public {
@@ -935,8 +1091,23 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-RES-CHILD"));
     }
 
+    function test_EventAsChildOfCode_TreeIntegrity() public {
+        _code("AR-TREE-ROOT", "sha256:treeroot");
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.EVENT, "sha256:tree-evt", "LAUNCH-TREE-ROOT"
+        );
+        b.parentHash = "AR-TREE-ROOT";
+        vm.prank(operator);
+        registry.registerEvent("AR-TREE-EVT", b,
+            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
+        assertTrue(registry.registered("AR-TREE-EVT"));
+
+        (AnchorRegistry.AnchorBase memory evtBase,,,,,) = registry.eventAnchors("AR-TREE-EVT");
+        assertEq(evtBase.parentHash, "AR-TREE-ROOT");
+    }
+
     // =========================================================================
-    // 10. EVENTS
+    // 11. EVENTS
     // =========================================================================
 
     function test_AnchoredEvent_OnRegisterCode() public {
@@ -1001,7 +1172,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 11. RECOVERY & GRIEFING DEFENCE
+    // 12. RECOVERY & GRIEFING DEFENCE
     // =========================================================================
 
     function test_RecoveryInitiated() public {
