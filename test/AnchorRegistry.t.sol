@@ -214,29 +214,30 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerEvent("AR-EVN01",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn01", "ETHDENVER-2026"),
-            "CONFERENCE", "2026-02-23", "Denver, CO", "ETHDenver",
+            "HUMAN", "CONFERENCE", "2026-02-23", "Denver, CO", "ETHDenver",
             "https://ethdenver.com/2026");
         assertTrue(registry.registered("AR-EVN01"));
 
-        (AnchorRegistry.AnchorBase memory b, string memory et, string memory ed,
-         string memory loc, string memory org, string memory url) =
+        (AnchorRegistry.AnchorBase memory b, string memory exec, string memory et,
+         string memory ed, string memory loc, string memory orch, string memory url) =
             registry.eventAnchors("AR-EVN01");
         assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.EVENT));
-        assertEq(et,  "CONFERENCE");
-        assertEq(ed,  "2026-02-23");
-        assertEq(loc, "Denver, CO");
-        assertEq(org, "ETHDenver");
-        assertEq(url, "https://ethdenver.com/2026");
+        assertEq(exec, "HUMAN");
+        assertEq(et,   "CONFERENCE");
+        assertEq(ed,   "2026-02-23");
+        assertEq(loc,  "Denver, CO");
+        assertEq(orch, "ETHDenver");
+        assertEq(url,  "https://ethdenver.com/2026");
     }
 
     function test_Event_Launch_Succeeds() public {
         vm.prank(operator);
         registry.registerEvent("AR-EVN02",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn02", "ANCHORREGISTRY-LAUNCH"),
-            "LAUNCH", "2026-03-19", "online", "AnchorRegistry",
+            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry",
             "https://anchorregistry.com");
         assertTrue(registry.registered("AR-EVN02"));
-        (, string memory et,,,,) = registry.eventAnchors("AR-EVN02");
+        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN02");
         assertEq(et, "LAUNCH");
     }
 
@@ -244,10 +245,10 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerEvent("AR-EVN03",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn03", "DAO-VOTE-001"),
-            "GOVERNANCE", "2026-03-10", "on-chain", "Uniswap DAO",
+            "HUMAN", "GOVERNANCE", "2026-03-10", "on-chain", "Uniswap DAO",
             "https://app.uniswap.org/vote/1");
         assertTrue(registry.registered("AR-EVN03"));
-        (, string memory et,,,,) = registry.eventAnchors("AR-EVN03");
+        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN03");
         assertEq(et, "GOVERNANCE");
     }
 
@@ -255,10 +256,10 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerEvent("AR-EVN04",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn04", "CONCERT-2026"),
-            "PERFORMANCE", "2026-06-15T20:00:00Z", "Rogers Centre, Toronto", "Live Nation",
+            "HUMAN", "PERFORMANCE", "2026-06-15T20:00:00Z", "Rogers Centre, Toronto", "Live Nation",
             "https://livenation.com/events/test");
         assertTrue(registry.registered("AR-EVN04"));
-        (, string memory et,,,,) = registry.eventAnchors("AR-EVN04");
+        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN04");
         assertEq(et, "PERFORMANCE");
     }
 
@@ -266,10 +267,10 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerEvent("AR-EVN05",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn05", "BASE-1M-TX"),
-            "MILESTONE", "2026-01-01", "on-chain", "Base",
+            "HUMAN", "MILESTONE", "2026-01-01", "on-chain", "Base",
             "https://basescan.org/block/25000000");
         assertTrue(registry.registered("AR-EVN05"));
-        (, string memory et,,,,) = registry.eventAnchors("AR-EVN05");
+        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN05");
         assertEq(et, "MILESTONE");
     }
 
@@ -277,10 +278,10 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerEvent("AR-EVN06",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn06", "HACKATHON-2026"),
-            "COMPETITION", "2026-04-01", "online", "ETHGlobal",
+            "HUMAN", "COMPETITION", "2026-04-01", "online", "ETHGlobal",
             "https://ethglobal.com/events/test");
         assertTrue(registry.registered("AR-EVN06"));
-        (, string memory et,,,,) = registry.eventAnchors("AR-EVN06");
+        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN06");
         assertEq(et, "COMPETITION");
     }
 
@@ -288,16 +289,150 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerEvent("AR-EVN07",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn07", "EVENT-OTHER"),
-            "OTHER", "2026-05-01", "Vancouver, BC", "Ian Moore",
+            "HUMAN", "OTHER", "2026-05-01", "Vancouver, BC", "Ian Moore",
             "https://test.com");
         assertTrue(registry.registered("AR-EVN07"));
+    }
+
+    function test_Event_Machine_Train_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN-M01",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evnm01", "DEFIMIND-TRAIN-001"),
+            "MACHINE", "TRAIN", "2026-03-19T14:23:00Z", "AWS us-east-1", "cron",
+            "https://github.com/runs/12345");
+        assertTrue(registry.registered("AR-EVN-M01"));
+
+        (AnchorRegistry.AnchorBase memory b, string memory exec, string memory et,
+         string memory ed, string memory loc, string memory orch, string memory url) =
+            registry.eventAnchors("AR-EVN-M01");
+        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.EVENT));
+        assertEq(exec, "MACHINE");
+        assertEq(et,   "TRAIN");
+        assertEq(ed,   "2026-03-19T14:23:00Z");
+        assertEq(loc,  "AWS us-east-1");
+        assertEq(orch, "cron");
+        assertEq(url,  "https://github.com/runs/12345");
+    }
+
+    function test_Event_Machine_Deploy_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN-M02",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evnm02", "DEFIMIND-DEPLOY-V2"),
+            "MACHINE", "DEPLOY", "2026-03-19T15:00:00Z", "Railway prod", "GitHub Actions",
+            "https://railway.app/deployments/abc123");
+        assertTrue(registry.registered("AR-EVN-M02"));
+        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN-M02");
+        assertEq(et, "DEPLOY");
+    }
+
+    function test_Event_Machine_Pipeline_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN-M03",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evnm03", "DATA-PIPELINE-RUN-001"),
+            "MACHINE", "PIPELINE", "2026-03-19T08:00:00Z", "GitHub Actions", "Airflow",
+            "https://airflow.example.com/runs/dag-001");
+        assertTrue(registry.registered("AR-EVN-M03"));
+        (, string memory exec,,,,, ) = registry.eventAnchors("AR-EVN-M03");
+        assertEq(exec, "MACHINE");
+    }
+
+    function test_Event_Agent_Deploy_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN-A01",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evna01", "DEFIMIND-AGENT-DEPLOY"),
+            "AGENT", "DEPLOY", "2026-03-19T16:45:00Z", "Railway prod", "DeFiMind v1.2",
+            "https://railway.app/deployments/agent-001");
+        assertTrue(registry.registered("AR-EVN-A01"));
+
+        (AnchorRegistry.AnchorBase memory b, string memory exec, string memory et,
+         string memory ed, string memory loc, string memory orch, string memory url) =
+            registry.eventAnchors("AR-EVN-A01");
+        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.EVENT));
+        assertEq(exec, "AGENT");
+        assertEq(et,   "DEPLOY");
+        assertEq(ed,   "2026-03-19T16:45:00Z");
+        assertEq(loc,  "Railway prod");
+        assertEq(orch, "DeFiMind v1.2");
+        assertEq(url,  "https://railway.app/deployments/agent-001");
+    }
+
+    function test_Event_Agent_Infer_Succeeds() public {
+        vm.prank(operator);
+        registry.registerEvent("AR-EVN-A02",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evna02", "DEFIMIND-INFERENCE-001"),
+            "AGENT", "INFER", "2026-03-19T17:00:00Z", "AWS us-east-1", "DeFiMind agent v1.2",
+            "https://api.defimind.ai/runs/inf-001");
+        assertTrue(registry.registered("AR-EVN-A02"));
+        (, string memory exec,,,,, ) = registry.eventAnchors("AR-EVN-A02");
+        assertEq(exec, "AGENT");
+    }
+
+    function test_Event_AllExecutorValues_Stored() public {
+        // HUMAN
+        vm.prank(operator);
+        registry.registerEvent("AR-EX-H",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:exh", "EXEC-HUMAN"),
+            "HUMAN", "CONFERENCE", "2026-03-19", "Vancouver, BC", "Ian Moore", "");
+        (, string memory execH,,,,, ) = registry.eventAnchors("AR-EX-H");
+        assertEq(execH, "HUMAN");
+
+        // MACHINE
+        vm.prank(operator);
+        registry.registerEvent("AR-EX-M",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:exm", "EXEC-MACHINE"),
+            "MACHINE", "BUILD", "2026-03-19T10:00:00Z", "GitHub Actions", "cron", "");
+        (, string memory execM,,,,, ) = registry.eventAnchors("AR-EX-M");
+        assertEq(execM, "MACHINE");
+
+        // AGENT
+        vm.prank(operator);
+        registry.registerEvent("AR-EX-A",
+            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:exa", "EXEC-AGENT"),
+            "AGENT", "TASK", "2026-03-19T11:00:00Z", "Railway prod", "DeFiMind v1.2", "");
+        (, string memory execA,,,,, ) = registry.eventAnchors("AR-EX-A");
+        assertEq(execA, "AGENT");
+    }
+
+    function test_Event_Machine_AsChildOfModel_Succeeds() public {
+        // DATA → MACHINE TRAIN EVENT → MODEL — the core provenance chain
+        vm.prank(operator);
+        registry.registerData("AR-DS-001",
+            _base(AnchorRegistry.ArtifactType.DATA, "sha256:ds001", "TRAINING-DATASET"),
+            "v1.0", "Parquet", "10000000", "", "https://huggingface.co/datasets/test");
+
+        AnchorRegistry.AnchorBase memory eb = _base(
+            AnchorRegistry.ArtifactType.EVENT, "sha256:train001", "DEFIMIND-TRAIN-RUN"
+        );
+        eb.parentHash = "AR-DS-001";
+        vm.prank(operator);
+        registry.registerEvent("AR-TR-001", eb,
+            "MACHINE", "TRAIN", "2026-03-19T14:00:00Z",
+            "AWS us-east-1", "cron", "https://github.com/runs/train-001");
+
+        AnchorRegistry.AnchorBase memory mb = _base(
+            AnchorRegistry.ArtifactType.MODEL, "sha256:mdl002", "DEFIMIND-MODEL-V2"
+        );
+        mb.parentHash = "AR-TR-001";
+        vm.prank(operator);
+        registry.registerModel("AR-MDL-002", mb,
+            "v2.0", "Transformer", "7B", "AR-DS-001", "https://huggingface.co/defimind/v2");
+
+        assertTrue(registry.registered("AR-DS-001"));
+        assertTrue(registry.registered("AR-TR-001"));
+        assertTrue(registry.registered("AR-MDL-002"));
+
+        (AnchorRegistry.AnchorBase memory trainBase,,,,,,) = registry.eventAnchors("AR-TR-001");
+        assertEq(trainBase.parentHash, "AR-DS-001");
+
+        (AnchorRegistry.AnchorBase memory modelBase,,,,,) = registry.modelAnchors("AR-MDL-002");
+        assertEq(modelBase.parentHash, "AR-TR-001");
     }
 
     function test_Event_MinimalFields_Succeeds() public {
         vm.prank(operator);
         registry.registerEvent("AR-EVN08",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn08", "EVENT-MINIMAL"),
-            "LAUNCH", "2026-03-19", "", "", "");
+            "HUMAN", "LAUNCH", "2026-03-19", "", "", "");
         assertTrue(registry.registered("AR-EVN08"));
     }
 
@@ -305,7 +440,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(opBackup);
         registry.registerEvent("AR-EVN09",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn09", "EVENT-BACKUP"),
-            "CONFERENCE", "2026-09-01", "Berlin", "Devcon",
+            "HUMAN", "CONFERENCE", "2026-09-01", "Berlin", "Devcon",
             "https://devcon.org");
         assertTrue(registry.registered("AR-EVN09"));
     }
@@ -315,19 +450,19 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
         registry.registerEvent("AR-EVN10",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn10", "EVENT-STRANGER"),
-            "LAUNCH", "2026-03-19", "online", "Attacker", "https://test.com");
+            "HUMAN", "LAUNCH", "2026-03-19", "online", "Attacker", "https://test.com");
     }
 
     function test_Event_DuplicateArId_Reverts() public {
         vm.prank(operator);
         registry.registerEvent("AR-EVN11",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn11", "EVENT"),
-            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "");
+            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "");
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-EVN11"));
         registry.registerEvent("AR-EVN11",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn11b", "EVENT"),
-            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "");
+            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "");
     }
 
     function test_Event_AnchoredEvent_Emitted() public {
@@ -340,7 +475,7 @@ contract AnchorRegistryTest is Test {
         );
         registry.registerEvent("AR-EVN12",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn12", "ANCHORREGISTRY-LAUNCH"),
-            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
+            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
     }
 
     function test_Event_AsChildOfCode_Succeeds() public {
@@ -351,7 +486,7 @@ contract AnchorRegistryTest is Test {
         b.parentHash = "AR-PROJECT01";
         vm.prank(operator);
         registry.registerEvent("AR-EVN13", b,
-            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
+            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
         assertTrue(registry.registered("AR-EVN13"));
     }
 
@@ -1099,10 +1234,10 @@ contract AnchorRegistryTest is Test {
         b.parentHash = "AR-TREE-ROOT";
         vm.prank(operator);
         registry.registerEvent("AR-TREE-EVT", b,
-            "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
+            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
         assertTrue(registry.registered("AR-TREE-EVT"));
 
-        (AnchorRegistry.AnchorBase memory evtBase,,,,,) = registry.eventAnchors("AR-TREE-EVT");
+        (AnchorRegistry.AnchorBase memory evtBase,,,,,,) = registry.eventAnchors("AR-TREE-EVT");
         assertEq(evtBase.parentHash, "AR-TREE-ROOT");
     }
 

@@ -18,8 +18,14 @@ pragma solidity ^0.8.24;
 ///                            NFTs, token IDs, DAOs, multisigs — on-chain asset provenance.
 ///
 ///         LIFECYCLE (9):     EVENT
-///                            Real-world and on-chain events — conferences, launches,
-///                            performances, governance votes, protocol milestones.
+///                            Dual-use: human events and machine/agent processes.
+///                            executor: HUMAN | MACHINE | AGENT
+///                            HUMAN  — conferences, launches, governance votes,
+///                                     protocol milestones, competitions.
+///                            MACHINE — training runs, deployments, builds, tests,
+///                                      evaluations, pipelines, inference jobs.
+///                            AGENT  — agent-initiated training, deployment,
+///                                     inference, evaluation, task and pipeline runs.
 ///                            Active at launch. onlyOperator.
 ///
 ///         TRANSACTION (10):  RECEIPT
@@ -427,21 +433,26 @@ contract AnchorRegistry {
     // LIFECYCLE STRUCT — type 9
     // =========================================================================
 
-    /// @notice EVENT — real-world and on-chain events.
-    ///         Conferences, product launches, performances, governance votes,
-    ///         protocol milestones, live recordings, competition results.
-    ///         eventType: CONFERENCE | LAUNCH | PERFORMANCE | GOVERNANCE | MILESTONE | COMPETITION | OTHER
-    ///         eventDate: ISO 8601 date or date-time e.g. 2026-03-16 or 2026-03-16T19:00:00Z.
-    ///         location: venue name, city, or "online" for virtual events.
-    ///         organizer: organizing entity or person.
-    ///         url: canonical event URL, recording, or result page.
+    /// @notice EVENT — dual-use lifecycle anchor for human events and machine/agent processes.
+    ///         executor: HUMAN | MACHINE | AGENT
+    ///         eventType:
+    ///           HUMAN   — CONFERENCE | LAUNCH | GOVERNANCE | MILESTONE | COMPETITION | OTHER
+    ///           MACHINE — TRAIN | DEPLOY | BUILD | TEST | EVALUATE | PIPELINE | INFERENCE | OTHER
+    ///           AGENT   — TRAIN | DEPLOY | INFER | EVALUATE | TASK | PIPELINE | OTHER
+    ///         eventDate: ISO 8601 date or datetime e.g. 2026-03-16 or 2026-03-19T14:23:00Z.
+    ///         location: venue, city, or "online" (HUMAN) — OR — execution environment
+    ///                   e.g. GitHub Actions, Railway, AWS us-east-1 (MACHINE | AGENT).
+    ///         orchestrator: organizing entity or person (HUMAN) — OR — triggering
+    ///                       system or agent e.g. cron, Airflow, DeFiMind v1.2 (MACHINE | AGENT).
+    ///         url: event page or recording (HUMAN) — OR — run logs or job URL (MACHINE | AGENT).
     struct EventAnchor {
         AnchorBase base;
-        string eventType;   // CONFERENCE | LAUNCH | PERFORMANCE | GOVERNANCE | MILESTONE | COMPETITION | OTHER
-        string eventDate;   // ISO 8601 date or datetime
-        string location;    // venue, city, or "online"
-        string organizer;   // organizing entity or person
-        string url;         // event URL, recording, or result page
+        string executor;      // HUMAN | MACHINE | AGENT
+        string eventType;     // vocabulary depends on executor — see above
+        string eventDate;     // ISO 8601 date or datetime
+        string location;      // venue/city/"online" — OR — execution environment
+        string orchestrator;  // organizing entity/person — OR — triggering system/agent
+        string url;           // event page/recording — OR — run logs/job URL
     }
 
     // =========================================================================
@@ -785,14 +796,15 @@ contract AnchorRegistry {
     function registerEvent(
         string calldata arId,
         AnchorBase calldata base,
+        string calldata executor,
         string calldata eventType,
         string calldata eventDate,
         string calldata location,
-        string calldata organizer,
+        string calldata orchestrator,
         string calldata url
     ) external onlyOperator {
         _validateBase(arId, base);
-        eventAnchors[arId] = EventAnchor(base, eventType, eventDate, location, organizer, url);
+        eventAnchors[arId] = EventAnchor(base, executor, eventType, eventDate, location, orchestrator, url);
         _register(arId, base);
     }
 
