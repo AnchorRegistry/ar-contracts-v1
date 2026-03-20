@@ -9,21 +9,22 @@ import "forge-std/Test.sol";
 import "../src/AnchorRegistry.sol";
 
 /// @title  AnchorRegistryTest
-/// @notice Foundry test suite for AnchorRegistry.sol (19 artifact types).
+/// @notice Foundry test suite for AnchorRegistry.sol (20 artifact types).
 ///
 ///         Sections:
-///         1.  Content types (0-8)
-///         2.  Lifecycle types (9) — EVENT
-///         3.  Transaction types (10) — RECEIPT
-///         4.  Gated types (11-13) — LEGAL, ENTITY, PROOF
-///         5.  RETRACTION (type 14)
-///         6.  REVIEW, VOID, AFFIRMED (types 15-17)
-///         7.  OTHER (type 18)
-///         8.  Access control
-///         9.  Edge cases & validation
-///         10. Tree integrity
-///         11. Events
-///         12. Recovery & griefing defence
+///         1.  Content types (0-8) — CODE through ONCHAIN
+///         2.  Content types (9)   — REPORT
+///         3.  Lifecycle types (10) — EVENT
+///         4.  Transaction types (11) — RECEIPT
+///         5.  Gated types (12-14) — LEGAL, ENTITY, PROOF
+///         6.  RETRACTION (type 15)
+///         7.  REVIEW, VOID, AFFIRMED (types 16-18)
+///         8.  OTHER (type 19)
+///         9.  Access control
+///         10. Edge cases & validation
+///         11. Tree integrity
+///         12. Anchored event & treeId
+///         13. Recovery & griefing defence
 
 contract AnchorRegistryTest is Test {
 
@@ -44,7 +45,10 @@ contract AnchorRegistryTest is Test {
         artifactType: AnchorRegistry.ArtifactType.CODE,
         manifestHash: "sha256:abc123",
         parentHash:   "",
-        descriptor:   "ICMOORE-2026-TEST"
+        descriptor:   "ICMOORE-2026-TEST",
+        title:        "Test Artifact",
+        author:       "Ian Moore",
+        treeId:       "tree:test-root"
     });
 
     function setUp() public {
@@ -61,7 +65,15 @@ contract AnchorRegistryTest is Test {
         string memory h,
         string memory d
     ) internal pure returns (AnchorRegistry.AnchorBase memory) {
-        return AnchorRegistry.AnchorBase({ artifactType: t, manifestHash: h, parentHash: "", descriptor: d });
+        return AnchorRegistry.AnchorBase({
+            artifactType: t,
+            manifestHash: h,
+            parentHash:   "",
+            descriptor:   d,
+            title:        "Test Artifact",
+            author:       "Test Author",
+            treeId:       ""
+        });
     }
 
     function _child(string memory h, string memory parent)
@@ -69,7 +81,12 @@ contract AnchorRegistryTest is Test {
     {
         return AnchorRegistry.AnchorBase({
             artifactType: AnchorRegistry.ArtifactType.CODE,
-            manifestHash: h, parentHash: parent, descriptor: "CHILD"
+            manifestHash: h,
+            parentHash:   parent,
+            descriptor:   "CHILD",
+            title:        "Child Artifact",
+            author:       "Test Author",
+            treeId:       ""
         });
     }
 
@@ -203,11 +220,188 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 2. LIFECYCLE TYPES (9) — EVENT
+    // 2. CONTENT TYPES (9) — REPORT
     // =========================================================================
 
-    function test_Event_EnumValue_Is9() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT), 9);
+    function test_Report_EnumValue_Is9() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.REPORT), 9);
+    }
+
+    function test_Report_Consulting_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT01",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt01", "HIVE-Q1-2026"),
+            "CONSULTING", "Acme Corp", "Q1-STRATEGY-2026", "final",
+            "Ian Moore", "Hive Advisory Inc.", "https://portal.hive.com/reports/q1-2026");
+        assertTrue(registry.registered("AR-RPT01"));
+
+        (AnchorRegistry.AnchorBase memory b,
+         string memory rt, string memory cl, string memory eng,
+         string memory ver, string memory auth, string memory inst, string memory url) =
+            registry.reportAnchors("AR-RPT01");
+        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.REPORT));
+        assertEq(rt,   "CONSULTING");
+        assertEq(cl,   "Acme Corp");
+        assertEq(eng,  "Q1-STRATEGY-2026");
+        assertEq(ver,  "final");
+        assertEq(auth, "Ian Moore");
+        assertEq(inst, "Hive Advisory Inc.");
+        assertEq(url,  "https://portal.hive.com/reports/q1-2026");
+    }
+
+    function test_Report_Financial_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT02",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt02", "ANNUAL-REPORT-2025"),
+            "FINANCIAL", "", "FY2025-ANNUAL", "final",
+            "CFO Office", "Acme Corp", "https://acme.com/investors/2025-annual");
+        assertTrue(registry.registered("AR-RPT02"));
+        (, string memory rt,,,,,,) = registry.reportAnchors("AR-RPT02");
+        assertEq(rt, "FINANCIAL");
+    }
+
+    function test_Report_Compliance_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT03",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt03", "SOC2-TYPE2-2026"),
+            "COMPLIANCE", "Acme Corp", "SOC2-2026", "final",
+            "Audit Team", "Deloitte", "https://secure.deloitte.com/soc2/acme-2026");
+        assertTrue(registry.registered("AR-RPT03"));
+        (, string memory rt,,,,,,) = registry.reportAnchors("AR-RPT03");
+        assertEq(rt, "COMPLIANCE");
+    }
+
+    function test_Report_ESG_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT04",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt04", "ESG-REPORT-2025"),
+            "ESG", "", "ESG-FY2025", "v1.0",
+            "Sustainability Team", "Acme Corp", "https://acme.com/esg/2025");
+        assertTrue(registry.registered("AR-RPT04"));
+        (, string memory rt,,,,,,) = registry.reportAnchors("AR-RPT04");
+        assertEq(rt, "ESG");
+    }
+
+    function test_Report_Technical_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT05",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt05", "ARCH-REVIEW-2026"),
+            "TECHNICAL", "Acme Corp", "ARCH-2026-Q1", "draft",
+            "Ian Moore, Jane Smith", "Hive Advisory Inc.", "");
+        assertTrue(registry.registered("AR-RPT05"));
+        (, string memory rt,, , string memory ver,,, ) = registry.reportAnchors("AR-RPT05");
+        assertEq(rt,  "TECHNICAL");
+        assertEq(ver, "draft");
+    }
+
+    function test_Report_Audit_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT06",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt06", "SECURITY-AUDIT-2026"),
+            "AUDIT", "AnchorRegistry", "SMART-CONTRACT-AUDIT-V1", "final",
+            "Trail of Bits", "Trail of Bits", "https://github.com/trailofbits/publications/anchorregistry");
+        assertTrue(registry.registered("AR-RPT06"));
+        (, string memory rt,,,,,,) = registry.reportAnchors("AR-RPT06");
+        assertEq(rt, "AUDIT");
+    }
+
+    function test_Report_Other_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT07",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt07", "CUSTOM-REPORT"),
+            "OTHER", "Client X", "ENGAGEMENT-001", "v2.1",
+            "Author A, Author B", "Firm Y", "https://example.com/report");
+        assertTrue(registry.registered("AR-RPT07"));
+    }
+
+    function test_Report_MinimalFields_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT08",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt08", "REPORT-MINIMAL"),
+            "CONSULTING", "", "", "draft", "", "", "");
+        assertTrue(registry.registered("AR-RPT08"));
+    }
+
+    function test_Report_ByBackupOperator_Succeeds() public {
+        vm.prank(opBackup);
+        registry.registerReport("AR-RPT09",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt09", "REPORT-BACKUP"),
+            "FINANCIAL", "Client A", "ENG-002", "final",
+            "Jane Smith", "Backup Firm", "");
+        assertTrue(registry.registered("AR-RPT09"));
+    }
+
+    function test_Report_ByStranger_Reverts() public {
+        vm.prank(stranger);
+        vm.expectRevert(AnchorRegistry.NotOperator.selector);
+        registry.registerReport("AR-RPT10",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt10", "REPORT-STRANGER"),
+            "CONSULTING", "", "", "draft", "", "", "");
+    }
+
+    function test_Report_DuplicateArId_Reverts() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT11",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt11", "REPORT"),
+            "CONSULTING", "", "ENG-001", "final", "Author", "Firm", "");
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-RPT11"));
+        registry.registerReport("AR-RPT11",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt11b", "REPORT"),
+            "CONSULTING", "", "ENG-001", "final", "Author", "Firm", "");
+    }
+
+    function test_Report_AnchoredEvent_Emitted() public {
+        vm.prank(operator);
+        vm.expectEmit(true, true, false, true);
+        emit AnchorRegistry.Anchored(
+            "AR-RPT12", operator,
+            AnchorRegistry.ArtifactType.REPORT,
+            "HIVE-Q2-2026", "Test Artifact", "Test Author", "sha256:rpt12", "", ""
+        );
+        registry.registerReport("AR-RPT12",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt12", "HIVE-Q2-2026"),
+            "CONSULTING", "Client B", "Q2-2026", "final",
+            "Ian Moore", "Hive Advisory Inc.", "https://portal.hive.com/q2-2026");
+    }
+
+    function test_Report_AsChildOfResearch_Succeeds() public {
+        vm.prank(operator);
+        registry.registerResearch("AR-PAPER01",
+            _base(AnchorRegistry.ArtifactType.RESEARCH, "sha256:paper01", "BASE-PAPER"),
+            "10.1000/base", "MIT", "Ian Moore", "https://arxiv.org/test");
+
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.REPORT, "sha256:rpt13", "REPORT-ON-PAPER"
+        );
+        b.parentHash = "AR-PAPER01";
+        vm.prank(operator);
+        registry.registerReport("AR-RPT13", b,
+            "TECHNICAL", "MIT", "PAPER-ANALYSIS", "v1.0",
+            "Jane Smith", "MIT Research", "https://mit.edu/reports/paper-analysis");
+        assertTrue(registry.registered("AR-RPT13"));
+    }
+
+    function test_Report_EnumShift_AllTypesCorrect() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.REPORT),     9);
+        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT),      10);
+        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT),    11);
+        assertEq(uint8(AnchorRegistry.ArtifactType.LEGAL),      12);
+        assertEq(uint8(AnchorRegistry.ArtifactType.ENTITY),     13);
+        assertEq(uint8(AnchorRegistry.ArtifactType.PROOF),      14);
+        assertEq(uint8(AnchorRegistry.ArtifactType.RETRACTION), 15);
+        assertEq(uint8(AnchorRegistry.ArtifactType.REVIEW),     16);
+        assertEq(uint8(AnchorRegistry.ArtifactType.VOID),       17);
+        assertEq(uint8(AnchorRegistry.ArtifactType.AFFIRMED),   18);
+        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      19);
+    }
+
+    // =========================================================================
+    // 3. LIFECYCLE TYPES (10) — EVENT
+    // =========================================================================
+
+    function test_Event_EnumValue_Is10() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT), 10);
     }
 
     function test_Event_Conference_Succeeds() public {
@@ -368,7 +562,6 @@ contract AnchorRegistryTest is Test {
     }
 
     function test_Event_AllExecutorValues_Stored() public {
-        // HUMAN
         vm.prank(operator);
         registry.registerEvent("AR-EX-H",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:exh", "EXEC-HUMAN"),
@@ -376,7 +569,6 @@ contract AnchorRegistryTest is Test {
         (, string memory execH,,,,, ) = registry.eventAnchors("AR-EX-H");
         assertEq(execH, "HUMAN");
 
-        // MACHINE
         vm.prank(operator);
         registry.registerEvent("AR-EX-M",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:exm", "EXEC-MACHINE"),
@@ -384,7 +576,6 @@ contract AnchorRegistryTest is Test {
         (, string memory execM,,,,, ) = registry.eventAnchors("AR-EX-M");
         assertEq(execM, "MACHINE");
 
-        // AGENT
         vm.prank(operator);
         registry.registerEvent("AR-EX-A",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:exa", "EXEC-AGENT"),
@@ -394,7 +585,6 @@ contract AnchorRegistryTest is Test {
     }
 
     function test_Event_Machine_AsChildOfModel_Succeeds() public {
-        // DATA → MACHINE TRAIN EVENT → MODEL — the core provenance chain
         vm.prank(operator);
         registry.registerData("AR-DS-001",
             _base(AnchorRegistry.ArtifactType.DATA, "sha256:ds001", "TRAINING-DATASET"),
@@ -471,7 +661,7 @@ contract AnchorRegistryTest is Test {
         emit AnchorRegistry.Anchored(
             "AR-EVN12", operator,
             AnchorRegistry.ArtifactType.EVENT,
-            "ANCHORREGISTRY-LAUNCH", "sha256:evn12", ""
+            "ANCHORREGISTRY-LAUNCH", "Test Artifact", "Test Author", "sha256:evn12", "", ""
         );
         registry.registerEvent("AR-EVN12",
             _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn12", "ANCHORREGISTRY-LAUNCH"),
@@ -490,22 +680,13 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-EVN13"));
     }
 
-    function test_Event_EnumShift_AllTypesCorrect() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT),      9);
-        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT),    10);
-        assertEq(uint8(AnchorRegistry.ArtifactType.LEGAL),      11);
-        assertEq(uint8(AnchorRegistry.ArtifactType.ENTITY),     12);
-        assertEq(uint8(AnchorRegistry.ArtifactType.PROOF),      13);
-        assertEq(uint8(AnchorRegistry.ArtifactType.RETRACTION), 14);
-        assertEq(uint8(AnchorRegistry.ArtifactType.REVIEW),     15);
-        assertEq(uint8(AnchorRegistry.ArtifactType.VOID),       16);
-        assertEq(uint8(AnchorRegistry.ArtifactType.AFFIRMED),   17);
-        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      18);
-    }
+    // =========================================================================
+    // 4. TRANSACTION TYPES (11) — RECEIPT
+    // =========================================================================
 
-    // =========================================================================
-    // 3. TRANSACTION TYPES (10) — RECEIPT
-    // =========================================================================
+    function test_Receipt_EnumValue_Is11() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT), 11);
+    }
 
     function test_Receipt_Purchase_Succeeds() public {
         vm.prank(operator);
@@ -611,7 +792,7 @@ contract AnchorRegistryTest is Test {
         emit AnchorRegistry.Anchored(
             "AR-RCP10", operator,
             AnchorRegistry.ArtifactType.RECEIPT,
-            "LAPTOP-BESTBUY-2026", "sha256:rcp10", ""
+            "LAPTOP-BESTBUY-2026", "Test Artifact", "Test Author", "sha256:rcp10", "", ""
         );
         registry.registerReceipt("AR-RCP10",
             _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp10", "LAPTOP-BESTBUY-2026"),
@@ -642,12 +823,8 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-RCP12"));
     }
 
-    function test_Receipt_EnumValue_Is10() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT), 10);
-    }
-
     // =========================================================================
-    // 4. GATED TYPES (11-13) — suppressed at launch
+    // 5. GATED TYPES (12-14) — suppressed at launch
     // =========================================================================
 
     function test_Legal_SuppressedAtLaunch() public view {
@@ -786,7 +963,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 5. RETRACTION (type 14)
+    // 6. RETRACTION (type 15)
     // =========================================================================
 
     function test_Retraction_Succeeds() public {
@@ -812,7 +989,6 @@ contract AnchorRegistryTest is Test {
         emit AnchorRegistry.Retracted("AR-RET02", "AR-V1", "AR-V2");
         registry.registerRetraction("AR-RET02", b, "AR-V1", "Superseded", "AR-V2");
 
-        // RetractionAnchor: (base, targetArId, reason, replacedBy)
         (, string memory retTargetArId,, string memory retReplacedBy) = registry.retractionAnchors("AR-RET02");
         assertEq(retTargetArId, "AR-V1");
         assertEq(retReplacedBy, "AR-V2");
@@ -856,17 +1032,15 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerRetraction("AR-RET", retb, "AR-V1", "Superseded by V2", "AR-V2");
 
-        // RetractionAnchor: (base, targetArId, reason, replacedBy)
-        (, , , string memory retReplacedBy) = registry.retractionAnchors("AR-RET");
+        (,,, string memory retReplacedBy) = registry.retractionAnchors("AR-RET");
         assertEq(retReplacedBy, "AR-V2");
 
-        // CodeAnchor: (base, gitHash, license, language, version, url)
         (AnchorRegistry.AnchorBase memory childBase,,,,,) = registry.codeAnchors("AR-CHILD");
         assertEq(childBase.parentHash, "AR-V1");
     }
 
     // =========================================================================
-    // 6. REVIEW, VOID, AFFIRMED (types 15-17)
+    // 7. REVIEW, VOID, AFFIRMED (types 16-18)
     // =========================================================================
 
     function test_Review_Succeeds() public {
@@ -1051,7 +1225,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 7. OTHER (type 18)
+    // 8. OTHER (type 19)
     // =========================================================================
 
     function test_RegisterOther() public {
@@ -1062,8 +1236,12 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-OTH01"));
     }
 
+    function test_Other_EnumValue_Is19() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER), 19);
+    }
+
     // =========================================================================
-    // 8. ACCESS CONTROL
+    // 9. ACCESS CONTROL
     // =========================================================================
 
     function test_OwnerAndRecoverySetOnDeploy() public view {
@@ -1133,7 +1311,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 9. EDGE CASES & VALIDATION
+    // 10. EDGE CASES & VALIDATION
     // =========================================================================
 
     function test_EmptyArId_Reverts() public {
@@ -1176,7 +1354,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 10. TREE INTEGRITY
+    // 11. TREE INTEGRITY
     // =========================================================================
 
     function test_ValidParentHash_Succeeds() public {
@@ -1218,7 +1396,10 @@ contract AnchorRegistryTest is Test {
             artifactType: AnchorRegistry.ArtifactType.RESEARCH,
             manifestHash: "sha256:res-child",
             parentHash:   "AR-CODE-PARENT",
-            descriptor:   "PAPER-CHILD"
+            descriptor:   "PAPER-CHILD",
+            title:        "Research Child",
+            author:       "Test Author",
+            treeId:       ""
         });
         vm.prank(operator);
         registry.registerResearch("AR-RES-CHILD", b,
@@ -1241,9 +1422,102 @@ contract AnchorRegistryTest is Test {
         assertEq(evtBase.parentHash, "AR-TREE-ROOT");
     }
 
+    function test_ReportAsChildOfResearch_TreeIntegrity() public {
+        vm.prank(operator);
+        registry.registerResearch("AR-RESEARCH-ROOT",
+            _base(AnchorRegistry.ArtifactType.RESEARCH, "sha256:resroot", "BASE-RESEARCH"),
+            "10.1000/base", "MIT", "Ian Moore", "https://arxiv.org/test");
+
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.REPORT, "sha256:rpt-child", "REPORT-ON-RESEARCH"
+        );
+        b.parentHash = "AR-RESEARCH-ROOT";
+        vm.prank(operator);
+        registry.registerReport("AR-RPT-CHILD", b,
+            "TECHNICAL", "", "RESEARCH-ANALYSIS", "v1.0",
+            "Jane Smith", "Hive Advisory", "");
+
+        assertTrue(registry.registered("AR-RPT-CHILD"));
+        (AnchorRegistry.AnchorBase memory rptBase,,,,,,,) = registry.reportAnchors("AR-RPT-CHILD");
+        assertEq(rptBase.parentHash, "AR-RESEARCH-ROOT");
+    }
+
     // =========================================================================
-    // 11. EVENTS
+    // 12. ANCHORED EVENT & TREEID
     // =========================================================================
+
+    function test_AR_TREE_ID_Constant() public view {
+        assertEq(registry.AR_TREE_ID(), "ar-operator-v1");
+    }
+
+    function test_TreeId_StoredInBase_Code() public {
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.CODE, "sha256:tid01", "TREEID-TEST"
+        );
+        b.treeId = "sha256:tree-fingerprint-abc123";
+        vm.prank(operator);
+        registry.registerCode("AR-TID01", b,
+            "git:tid", "MIT", "Python", "v1.0.0", "https://test");
+        (AnchorRegistry.AnchorBase memory stored,,,,,) = registry.codeAnchors("AR-TID01");
+        assertEq(stored.treeId, "sha256:tree-fingerprint-abc123");
+    }
+
+    function test_TreeId_StoredInBase_Report() public {
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.REPORT, "sha256:tid02", "TREEID-REPORT"
+        );
+        b.treeId = "sha256:hive-tree-fingerprint";
+        vm.prank(operator);
+        registry.registerReport("AR-TID02", b,
+            "CONSULTING", "Client A", "ENG-001", "final",
+            "Ian Moore", "Hive Advisory Inc.", "");
+        (AnchorRegistry.AnchorBase memory stored,,,,,,,) = registry.reportAnchors("AR-TID02");
+        assertEq(stored.treeId, "sha256:hive-tree-fingerprint");
+    }
+
+    function test_TreeId_EmptyString_Allowed() public {
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.CODE, "sha256:tid03", "TREEID-EMPTY"
+        );
+        b.treeId = "";
+        vm.prank(operator);
+        registry.registerCode("AR-TID03", b,
+            "git:tid", "MIT", "Python", "v1.0.0", "https://test");
+        (AnchorRegistry.AnchorBase memory stored,,,,,) = registry.codeAnchors("AR-TID03");
+        assertEq(stored.treeId, "");
+    }
+
+    function test_TreeId_EmittedInAnchoredEvent() public {
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.CODE, "sha256:tid04", "TREEID-EVENT-TEST"
+        );
+        b.treeId = "sha256:my-tree-fingerprint";
+        vm.prank(operator);
+        vm.expectEmit(true, true, false, true);
+        emit AnchorRegistry.Anchored(
+            "AR-TID04", operator,
+            AnchorRegistry.ArtifactType.CODE,
+            "TREEID-EVENT-TEST", "Test Artifact", "Test Author",
+            "sha256:tid04", "", "sha256:my-tree-fingerprint"
+        );
+        registry.registerCode("AR-TID04", b,
+            "git:tid", "MIT", "Python", "v1.0.0", "https://test");
+    }
+
+    function test_AR_TREE_ID_UsedForReviewAnchor() public {
+        _code("AR-DISPUTE-TARGET", "sha256:disputetarget");
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.REVIEW, "sha256:ar-review", "AR-DISPUTE-REVIEW"
+        );
+        b.treeId = registry.AR_TREE_ID();
+        b.parentHash = "AR-DISPUTE-TARGET";
+        vm.prank(operator);
+        registry.registerReview("AR-DISP-REV01", b,
+            "AR-DISPUTE-TARGET", "FALSE_AUTHORSHIP", "https://anchorregistry.com/disputes/1");
+        // ReviewAnchor has 4 fields: base, targetArId, reviewType, evidenceUrl
+        (AnchorRegistry.AnchorBase memory stored,,,) = registry.reviewAnchors("AR-DISP-REV01");
+        assertEq(stored.treeId, "ar-operator-v1");
+    }
 
     function test_AnchoredEvent_OnRegisterCode() public {
         vm.prank(operator);
@@ -1251,7 +1525,7 @@ contract AnchorRegistryTest is Test {
         emit AnchorRegistry.Anchored(
             "AR-EVT01", operator,
             AnchorRegistry.ArtifactType.CODE,
-            "ICMOORE-2026-TEST", "sha256:abc123", ""
+            "ICMOORE-2026-TEST", "Test Artifact", "Ian Moore", "sha256:abc123", "", "tree:test-root"
         );
         registry.registerCode("AR-EVT01", base,
             "git:abc", "MIT", "TypeScript", "v1.0.0", "https://test");
@@ -1307,7 +1581,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 12. RECOVERY & GRIEFING DEFENCE
+    // 13. RECOVERY & GRIEFING DEFENCE
     // =========================================================================
 
     function test_RecoveryInitiated() public {

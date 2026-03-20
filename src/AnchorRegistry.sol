@@ -10,14 +10,16 @@ pragma solidity ^0.8.24;
 ///         Immutable record of what existed, when, and who registered it.
 /// @dev    Deployed once on Base (Ethereum L2). Cannot be modified post-deployment.
 ///
-///         Nineteen artifact types in seven logical groups:
+///         Twenty artifact types in seven logical groups:
 ///
-///         CONTENT (0-8):     CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN
+///         CONTENT (0-9):     CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN, REPORT
 ///                            What creators make. Active at launch. onlyOperator.
 ///                            ONCHAIN: Ethereum addresses, transactions, contracts,
 ///                            NFTs, token IDs, DAOs, multisigs — on-chain asset provenance.
+///                            REPORT: consulting, financial, compliance, ESG, technical,
+///                            audit, and other structured reports.
 ///
-///         LIFECYCLE (9):     EVENT
+///         LIFECYCLE (10):    EVENT
 ///                            Dual-use: human events and machine/agent processes.
 ///                            executor: HUMAN | MACHINE | AGENT
 ///                            HUMAN  — conferences, launches, governance votes,
@@ -28,35 +30,43 @@ pragma solidity ^0.8.24;
 ///                                     inference, evaluation, task and pipeline runs.
 ///                            Active at launch. onlyOperator.
 ///
-///         TRANSACTION (10):  RECEIPT
+///         TRANSACTION (11):  RECEIPT
 ///                            Proof of commercial, medical, financial, government,
 ///                            event, or service transactions. Active at launch.
 ///                            onlyOperator. receiptType field handles subtypes:
 ///                            PURCHASE | MEDICAL | FINANCIAL | GOVERNMENT | EVENT | SERVICE
 ///
-///         GATED (11-13):     LEGAL, ENTITY, PROOF
+///         GATED (12-14):     LEGAL, ENTITY, PROOF
 ///                            Suppressed at launch. Separate operator gates.
 ///                            LEGAL opens in V2-V3 with document verification.
 ///                            ENTITY opens in V2 with domain verification.
 ///                            PROOF opens in V4 with ZK infrastructure.
 ///
-///         SELF-SERVICE (14): RETRACTION
+///         SELF-SERVICE (15): RETRACTION
 ///                            Owner-initiated. Active at launch. Operator submits
 ///                            on behalf of creator after ownership token verification.
 ///
-///         REVIEW (15-17):    REVIEW, VOID, AFFIRMED
+///         REVIEW (16-18):    REVIEW, VOID, AFFIRMED
 ///                            AnchorRegistry operator-only. Active at launch.
 ///                            REVIEW: soft flag, anchor under review.
 ///                            VOID: hard finding, subtree condemned, cascades down.
 ///                            AFFIRMED: exoneration, review resolved.
+///                            All REVIEW/VOID/AFFIRMED anchors use treeId = AR_TREE_ID
+///                            to distinguish AR dispute actions from tree holder actions.
 ///
-///         CATCH-ALL (18):    OTHER
+///         CATCH-ALL (19):    OTHER
+///
+///         AnchorBase fields:
+///         treeId: cryptographic tree identity. sha256(anchorKey + rootArId) for tree
+///                 holder anchors. AR_TREE_ID constant used for all REVIEW, VOID, AFFIRMED
+///                 anchors registered by AnchorRegistry. Enables one-query tree retrieval,
+///                 fraud detection, and bidirectional trust proof.
 ///
 ///         Four access gates:
-///         onlyOperator      — types 0-10, 14-18
-///         onlyLegalOperator — type 11  (no operators added at deployment)
-///         onlyEntityOperator— type 12  (no operators added at deployment)
-///         onlyProofOperator — type 13  (no operators added at deployment)
+///         onlyOperator      — types 0-11, 15-19
+///         onlyLegalOperator — type 12  (no operators added at deployment)
+///         onlyEntityOperator— type 13  (no operators added at deployment)
+///         onlyProofOperator — type 14  (no operators added at deployment)
 
 contract AnchorRegistry {
 
@@ -77,6 +87,10 @@ contract AnchorRegistry {
     uint256 public recoveryInitiatedAt;
     uint256 public recoveryLockoutUntil;
     address public pendingOwner;
+
+    // Reserved treeId for REVIEW, VOID, and AFFIRMED anchors registered by AnchorRegistry.
+    // Distinguishes AR dispute actions from tree holder actions on-chain.
+    string public constant AR_TREE_ID = "ar-operator-v1";
 
     // =========================================================================
     // ACCESS CONTROL EVENTS
@@ -248,7 +262,7 @@ contract AnchorRegistry {
     // =========================================================================
 
     enum ArtifactType {
-        // ── CONTENT (0-8) ─────────────────────────────────────────────────
+        // ── CONTENT (0-9) ─────────────────────────────────────────────────
         CODE,        // 0
         RESEARCH,    // 1
         DATA,        // 2
@@ -258,28 +272,29 @@ contract AnchorRegistry {
         TEXT,        // 6
         POST,        // 7
         ONCHAIN,     // 8
+        REPORT,      // 9
 
-        // ── LIFECYCLE (9) ─────────────────────────────────────────────────
-        EVENT,       // 9
+        // ── LIFECYCLE (10) ────────────────────────────────────────────────
+        EVENT,       // 10
 
-        // ── TRANSACTION (10) ──────────────────────────────────────────────
-        RECEIPT,     // 10
+        // ── TRANSACTION (11) ──────────────────────────────────────────────
+        RECEIPT,     // 11
 
-        // ── GATED (11-13) ─────────────────────────────────────────────────
-        LEGAL,       // 11
-        ENTITY,      // 12
-        PROOF,       // 13
+        // ── GATED (12-14) ─────────────────────────────────────────────────
+        LEGAL,       // 12
+        ENTITY,      // 13
+        PROOF,       // 14
 
-        // ── SELF-SERVICE (14) ─────────────────────────────────────────────
-        RETRACTION,  // 14
+        // ── SELF-SERVICE (15) ─────────────────────────────────────────────
+        RETRACTION,  // 15
 
-        // ── REVIEW (15-17) ────────────────────────────────────────────────
-        REVIEW,      // 15
-        VOID,        // 16
-        AFFIRMED,    // 17
+        // ── REVIEW (16-18) ────────────────────────────────────────────────
+        REVIEW,      // 16
+        VOID,        // 17
+        AFFIRMED,    // 18
 
-        // ── CATCH-ALL (18) ────────────────────────────────────────────────
-        OTHER        // 18
+        // ── CATCH-ALL (19) ────────────────────────────────────────────────
+        OTHER        // 19
     }
 
     // =========================================================================
@@ -291,10 +306,14 @@ contract AnchorRegistry {
         string manifestHash;  // SHA256 of full manifest (all fields including off-chain)
         string parentHash;    // AR-ID of parent anchor, empty if root
         string descriptor;    // human-readable e.g. ICMOORE-2026-UNISWAPPY
+        string title;         // artifact title e.g. "UniswapPy v1.0"
+        string author;        // artifact author e.g. "Ian Moore" or "anonymous"
+        string treeId;        // cryptographic tree identity: sha256(anchorKey + rootArId)
+                              // AR_TREE_ID for all REVIEW, VOID, AFFIRMED anchors
     }
 
     // =========================================================================
-    // CONTENT STRUCTS — types 0-8
+    // CONTENT STRUCTS — types 0-9
     // =========================================================================
 
     /// @notice CODE — repos, packages, commits, scripts.
@@ -429,8 +448,28 @@ contract AnchorRegistry {
         string url;              // explorer URL
     }
 
+    /// @notice REPORT — consulting, financial, compliance, ESG, technical,
+    ///         audit, and other structured reports produced by firms or individuals.
+    ///         reportType: CONSULTING | FINANCIAL | COMPLIANCE | ESG | TECHNICAL | AUDIT | OTHER
+    ///         client: client name or identifier (optional).
+    ///         engagement: engagement or project reference.
+    ///         version: e.g. v1.0, draft, final.
+    ///         authors: comma-separated authors.
+    ///         institution: producing firm e.g. Hive Advisory Inc.
+    ///         url: document URL or secure portal link.
+    struct ReportAnchor {
+        AnchorBase base;
+        string reportType;   // CONSULTING | FINANCIAL | COMPLIANCE | ESG | TECHNICAL | AUDIT | OTHER
+        string client;       // client name or identifier (optional)
+        string engagement;   // engagement or project reference
+        string version;      // e.g. v1.0, draft, final
+        string authors;      // comma-separated authors
+        string institution;  // producing firm e.g. Hive Advisory Inc.
+        string url;          // document URL or secure portal link
+    }
+
     // =========================================================================
-    // LIFECYCLE STRUCT — type 9
+    // LIFECYCLE STRUCT — type 10
     // =========================================================================
 
     /// @notice EVENT — dual-use lifecycle anchor for human events and machine/agent processes.
@@ -456,7 +495,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // TRANSACTION STRUCT — type 10
+    // TRANSACTION STRUCT — type 11
     // =========================================================================
 
     /// @notice RECEIPT — proof of commercial, medical, financial, government,
@@ -476,7 +515,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // GATED STRUCTS — types 11-13 (suppressed at launch)
+    // GATED STRUCTS — types 12-14 (suppressed at launch)
     // =========================================================================
 
     /// @notice LEGAL — contracts, patents, filings, disclosures.
@@ -532,7 +571,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // SELF-SERVICE STRUCT — type 14
+    // SELF-SERVICE STRUCT — type 15
     // =========================================================================
 
     struct RetractionAnchor {
@@ -543,7 +582,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REVIEW STRUCTS — types 15-17
+    // REVIEW STRUCTS — types 16-18
     // =========================================================================
 
     struct ReviewAnchor {
@@ -569,7 +608,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // CATCH-ALL STRUCT — type 18
+    // CATCH-ALL STRUCT — type 19
     // =========================================================================
 
     struct OtherAnchor {
@@ -593,6 +632,7 @@ contract AnchorRegistry {
     mapping(string => TextAnchor)       public textAnchors;
     mapping(string => PostAnchor)       public postAnchors;
     mapping(string => OnChainAnchor)    public onChainAnchors;
+    mapping(string => ReportAnchor)     public reportAnchors;
     mapping(string => EventAnchor)      public eventAnchors;
     mapping(string => ReceiptAnchor)    public receiptAnchors;
     mapping(string => LegalAnchor)      public legalAnchors;
@@ -615,8 +655,11 @@ contract AnchorRegistry {
         address indexed registrant,
         ArtifactType    artifactType,
         string          descriptor,
+        string          title,
+        string          author,
         string          manifestHash,
-        string          parentHash
+        string          parentHash,
+        string          treeId
     );
 
     event Retracted(string indexed arId, string indexed targetArId, string replacedBy);
@@ -649,7 +692,7 @@ contract AnchorRegistry {
 
     function _register(string calldata arId, AnchorBase calldata base) internal {
         registered[arId] = true;
-        emit Anchored(arId, msg.sender, base.artifactType, base.descriptor, base.manifestHash, base.parentHash);
+        emit Anchored(arId, msg.sender, base.artifactType, base.descriptor, base.title, base.author, base.manifestHash, base.parentHash, base.treeId);
     }
 
     function _validateTarget(string calldata targetArId) internal view {
@@ -658,7 +701,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — CONTENT (types 0-8)
+    // REGISTER FUNCTIONS — CONTENT (types 0-9)
     // =========================================================================
 
     function registerCode(
@@ -789,8 +832,24 @@ contract AnchorRegistry {
         _register(arId, base);
     }
 
+    function registerReport(
+        string calldata arId,
+        AnchorBase calldata base,
+        string calldata reportType,
+        string calldata client,
+        string calldata engagement,
+        string calldata version,
+        string calldata authors,
+        string calldata institution,
+        string calldata url
+    ) external onlyOperator {
+        _validateBase(arId, base);
+        reportAnchors[arId] = ReportAnchor(base, reportType, client, engagement, version, authors, institution, url);
+        _register(arId, base);
+    }
+
     // =========================================================================
-    // REGISTER FUNCTIONS — LIFECYCLE (type 9)
+    // REGISTER FUNCTIONS — LIFECYCLE (type 10)
     // =========================================================================
 
     function registerEvent(
@@ -809,7 +868,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — TRANSACTION (type 10)
+    // REGISTER FUNCTIONS — TRANSACTION (type 11)
     // =========================================================================
 
     function registerReceipt(
@@ -831,7 +890,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — GATED (types 11-13, suppressed at launch)
+    // REGISTER FUNCTIONS — GATED (types 12-14, suppressed at launch)
     // =========================================================================
 
     function registerLegal(
@@ -889,7 +948,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — SELF-SERVICE (type 14)
+    // REGISTER FUNCTIONS — SELF-SERVICE (type 15)
     // =========================================================================
 
     function registerRetraction(
@@ -907,7 +966,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — REVIEW SYSTEM (types 15-17)
+    // REGISTER FUNCTIONS — REVIEW SYSTEM (types 16-18)
     // =========================================================================
 
     function registerReview(
@@ -955,7 +1014,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — CATCH-ALL (type 18)
+    // REGISTER FUNCTIONS — CATCH-ALL (type 19)
     // =========================================================================
 
     function registerOther(
