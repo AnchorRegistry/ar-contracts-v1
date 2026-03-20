@@ -10,16 +10,18 @@ pragma solidity ^0.8.24;
 ///         Immutable record of what existed, when, and who registered it.
 /// @dev    Deployed once on Base (Ethereum L2). Cannot be modified post-deployment.
 ///
-///         Twenty artifact types in seven logical groups:
+///         Twenty-one artifact types in seven logical groups:
 ///
-///         CONTENT (0-9):     CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN, REPORT
+///         CONTENT (0-10):    CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN, REPORT, NOTE
 ///                            What creators make. Active at launch. onlyOperator.
 ///                            ONCHAIN: Ethereum addresses, transactions, contracts,
 ///                            NFTs, token IDs, DAOs, multisigs — on-chain asset provenance.
 ///                            REPORT: consulting, financial, compliance, ESG, technical,
 ///                            audit, and other structured reports.
+///                            NOTE: short-form annotations, memos, meeting notes,
+///                            correspondence records, field notes, observations.
 ///
-///         LIFECYCLE (10):    EVENT
+///         LIFECYCLE (11):    EVENT
 ///                            Dual-use: human events and machine/agent processes.
 ///                            executor: HUMAN | MACHINE | AGENT
 ///                            HUMAN  — conferences, launches, governance votes,
@@ -30,23 +32,23 @@ pragma solidity ^0.8.24;
 ///                                     inference, evaluation, task and pipeline runs.
 ///                            Active at launch. onlyOperator.
 ///
-///         TRANSACTION (11):  RECEIPT
+///         TRANSACTION (12):  RECEIPT
 ///                            Proof of commercial, medical, financial, government,
 ///                            event, or service transactions. Active at launch.
 ///                            onlyOperator. receiptType field handles subtypes:
 ///                            PURCHASE | MEDICAL | FINANCIAL | GOVERNMENT | EVENT | SERVICE
 ///
-///         GATED (12-14):     LEGAL, ENTITY, PROOF
+///         GATED (13-15):     LEGAL, ENTITY, PROOF
 ///                            Suppressed at launch. Separate operator gates.
 ///                            LEGAL opens in V2-V3 with document verification.
 ///                            ENTITY opens in V2 with domain verification.
 ///                            PROOF opens in V4 with ZK infrastructure.
 ///
-///         SELF-SERVICE (15): RETRACTION
+///         SELF-SERVICE (16): RETRACTION
 ///                            Owner-initiated. Active at launch. Operator submits
 ///                            on behalf of creator after ownership token verification.
 ///
-///         REVIEW (16-18):    REVIEW, VOID, AFFIRMED
+///         REVIEW (17-19):    REVIEW, VOID, AFFIRMED
 ///                            AnchorRegistry operator-only. Active at launch.
 ///                            REVIEW: soft flag, anchor under review.
 ///                            VOID: hard finding, subtree condemned, cascades down.
@@ -54,7 +56,7 @@ pragma solidity ^0.8.24;
 ///                            All REVIEW/VOID/AFFIRMED anchors use treeId = AR_TREE_ID
 ///                            to distinguish AR dispute actions from tree holder actions.
 ///
-///         CATCH-ALL (19):    OTHER
+///         CATCH-ALL (20):    OTHER
 ///
 ///         AnchorBase fields:
 ///         treeId: cryptographic tree identity. sha256(anchorKey + rootArId) for tree
@@ -63,10 +65,10 @@ pragma solidity ^0.8.24;
 ///                 fraud detection, and bidirectional trust proof.
 ///
 ///         Four access gates:
-///         onlyOperator      — types 0-11, 15-19
-///         onlyLegalOperator — type 12  (no operators added at deployment)
-///         onlyEntityOperator— type 13  (no operators added at deployment)
-///         onlyProofOperator — type 14  (no operators added at deployment)
+///         onlyOperator      — types 0-12, 16-20
+///         onlyLegalOperator — type 13  (no operators added at deployment)
+///         onlyEntityOperator— type 14  (no operators added at deployment)
+///         onlyProofOperator — type 15  (no operators added at deployment)
 
 contract AnchorRegistry {
 
@@ -262,7 +264,7 @@ contract AnchorRegistry {
     // =========================================================================
 
     enum ArtifactType {
-        // ── CONTENT (0-9) ─────────────────────────────────────────────────
+        // ── CONTENT (0-10) ────────────────────────────────────────────────
         CODE,        // 0
         RESEARCH,    // 1
         DATA,        // 2
@@ -273,28 +275,29 @@ contract AnchorRegistry {
         POST,        // 7
         ONCHAIN,     // 8
         REPORT,      // 9
+        NOTE,        // 10
 
-        // ── LIFECYCLE (10) ────────────────────────────────────────────────
-        EVENT,       // 10
+        // ── LIFECYCLE (11) ────────────────────────────────────────────────
+        EVENT,       // 11
 
-        // ── TRANSACTION (11) ──────────────────────────────────────────────
-        RECEIPT,     // 11
+        // ── TRANSACTION (12) ──────────────────────────────────────────────
+        RECEIPT,     // 12
 
-        // ── GATED (12-14) ─────────────────────────────────────────────────
-        LEGAL,       // 12
-        ENTITY,      // 13
-        PROOF,       // 14
+        // ── GATED (13-15) ─────────────────────────────────────────────────
+        LEGAL,       // 13
+        ENTITY,      // 14
+        PROOF,       // 15
 
-        // ── SELF-SERVICE (15) ─────────────────────────────────────────────
-        RETRACTION,  // 15
+        // ── SELF-SERVICE (16) ─────────────────────────────────────────────
+        RETRACTION,  // 16
 
-        // ── REVIEW (16-18) ────────────────────────────────────────────────
-        REVIEW,      // 16
-        VOID,        // 17
-        AFFIRMED,    // 18
+        // ── REVIEW (17-19) ────────────────────────────────────────────────
+        REVIEW,      // 17
+        VOID,        // 18
+        AFFIRMED,    // 19
 
-        // ── CATCH-ALL (19) ────────────────────────────────────────────────
-        OTHER        // 19
+        // ── CATCH-ALL (20) ────────────────────────────────────────────────
+        OTHER        // 20
     }
 
     // =========================================================================
@@ -313,7 +316,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // CONTENT STRUCTS — types 0-9
+    // CONTENT STRUCTS — types 0-10
     // =========================================================================
 
     /// @notice CODE — repos, packages, commits, scripts.
@@ -468,8 +471,23 @@ contract AnchorRegistry {
         string url;          // document URL or secure portal link
     }
 
+    /// @notice NOTE — memos, meeting notes, correspondence, observations,
+    ///         field notes. Short-form annotations that support or surround
+    ///         formal deliverables. Active at launch. onlyOperator.
+    ///         noteType: MEMO | MEETING | CORRESPONDENCE | OBSERVATION | FIELD | OTHER
+    ///         date: ISO 8601 date e.g. 2026-03-20.
+    ///         participants: comma-separated participants (optional).
+    ///         url: link to full note if stored externally (optional).
+    struct NoteAnchor {
+        AnchorBase base;
+        string noteType;      // MEMO | MEETING | CORRESPONDENCE | OBSERVATION | FIELD | OTHER
+        string date;          // ISO 8601 date
+        string participants;  // comma-separated (optional)
+        string url;           // external link (optional)
+    }
+
     // =========================================================================
-    // LIFECYCLE STRUCT — type 10
+    // LIFECYCLE STRUCT — type 11
     // =========================================================================
 
     /// @notice EVENT — dual-use lifecycle anchor for human events and machine/agent processes.
@@ -495,7 +513,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // TRANSACTION STRUCT — type 11
+    // TRANSACTION STRUCT — type 12
     // =========================================================================
 
     /// @notice RECEIPT — proof of commercial, medical, financial, government,
@@ -515,7 +533,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // GATED STRUCTS — types 12-14 (suppressed at launch)
+    // GATED STRUCTS — types 13-15 (suppressed at launch)
     // =========================================================================
 
     /// @notice LEGAL — contracts, patents, filings, disclosures.
@@ -571,7 +589,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // SELF-SERVICE STRUCT — type 15
+    // SELF-SERVICE STRUCT — type 16
     // =========================================================================
 
     struct RetractionAnchor {
@@ -582,7 +600,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REVIEW STRUCTS — types 16-18
+    // REVIEW STRUCTS — types 17-19
     // =========================================================================
 
     struct ReviewAnchor {
@@ -608,7 +626,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // CATCH-ALL STRUCT — type 19
+    // CATCH-ALL STRUCT — type 20
     // =========================================================================
 
     struct OtherAnchor {
@@ -633,6 +651,7 @@ contract AnchorRegistry {
     mapping(string => PostAnchor)       public postAnchors;
     mapping(string => OnChainAnchor)    public onChainAnchors;
     mapping(string => ReportAnchor)     public reportAnchors;
+    mapping(string => NoteAnchor)       public noteAnchors;
     mapping(string => EventAnchor)      public eventAnchors;
     mapping(string => ReceiptAnchor)    public receiptAnchors;
     mapping(string => LegalAnchor)      public legalAnchors;
@@ -701,7 +720,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — CONTENT (types 0-9)
+    // REGISTER FUNCTIONS — CONTENT (types 0-10)
     // =========================================================================
 
     function registerCode(
@@ -848,8 +867,21 @@ contract AnchorRegistry {
         _register(arId, base);
     }
 
+    function registerNote(
+        string calldata arId,
+        AnchorBase calldata base,
+        string calldata noteType,
+        string calldata date,
+        string calldata participants,
+        string calldata url
+    ) external onlyOperator {
+        _validateBase(arId, base);
+        noteAnchors[arId] = NoteAnchor(base, noteType, date, participants, url);
+        _register(arId, base);
+    }
+
     // =========================================================================
-    // REGISTER FUNCTIONS — LIFECYCLE (type 10)
+    // REGISTER FUNCTIONS — LIFECYCLE (type 11)
     // =========================================================================
 
     function registerEvent(
@@ -868,7 +900,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — TRANSACTION (type 11)
+    // REGISTER FUNCTIONS — TRANSACTION (type 12)
     // =========================================================================
 
     function registerReceipt(
@@ -890,7 +922,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — GATED (types 12-14, suppressed at launch)
+    // REGISTER FUNCTIONS — GATED (types 13-15, suppressed at launch)
     // =========================================================================
 
     function registerLegal(
@@ -948,7 +980,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — SELF-SERVICE (type 15)
+    // REGISTER FUNCTIONS — SELF-SERVICE (type 16)
     // =========================================================================
 
     function registerRetraction(
@@ -966,7 +998,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — REVIEW SYSTEM (types 16-18)
+    // REGISTER FUNCTIONS — REVIEW SYSTEM (types 17-19)
     // =========================================================================
 
     function registerReview(
@@ -1014,7 +1046,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — CATCH-ALL (type 19)
+    // REGISTER FUNCTIONS — CATCH-ALL (type 20)
     // =========================================================================
 
     function registerOther(

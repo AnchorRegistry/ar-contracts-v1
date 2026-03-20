@@ -9,22 +9,23 @@ import "forge-std/Test.sol";
 import "../src/AnchorRegistry.sol";
 
 /// @title  AnchorRegistryTest
-/// @notice Foundry test suite for AnchorRegistry.sol (20 artifact types).
+/// @notice Foundry test suite for AnchorRegistry.sol (21 artifact types).
 ///
 ///         Sections:
 ///         1.  Content types (0-8) — CODE through ONCHAIN
 ///         2.  Content types (9)   — REPORT
-///         3.  Lifecycle types (10) — EVENT
-///         4.  Transaction types (11) — RECEIPT
-///         5.  Gated types (12-14) — LEGAL, ENTITY, PROOF
-///         6.  RETRACTION (type 15)
-///         7.  REVIEW, VOID, AFFIRMED (types 16-18)
-///         8.  OTHER (type 19)
-///         9.  Access control
-///         10. Edge cases & validation
-///         11. Tree integrity
-///         12. Anchored event & treeId
-///         13. Recovery & griefing defence
+///         3.  Content types (10)  — NOTE
+///         4.  Lifecycle types (11) — EVENT
+///         5.  Transaction types (12) — RECEIPT
+///         6.  Gated types (13-15) — LEGAL, ENTITY, PROOF
+///         7.  RETRACTION (type 16)
+///         8.  REVIEW, VOID, AFFIRMED (types 17-19)
+///         9.  OTHER (type 20)
+///         10. Access control
+///         11. Edge cases & validation
+///         12. Tree integrity
+///         13. Anchored event & treeId
+///         14. Recovery & griefing defence
 
 contract AnchorRegistryTest is Test {
 
@@ -90,7 +91,6 @@ contract AnchorRegistryTest is Test {
         });
     }
 
-    /// @dev Helper: register a CODE anchor with all fields
     function _code(string memory arId, string memory h) internal {
         vm.prank(operator);
         registry.registerCode(arId,
@@ -384,24 +384,175 @@ contract AnchorRegistryTest is Test {
 
     function test_Report_EnumShift_AllTypesCorrect() public pure {
         assertEq(uint8(AnchorRegistry.ArtifactType.REPORT),     9);
-        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT),      10);
-        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT),    11);
-        assertEq(uint8(AnchorRegistry.ArtifactType.LEGAL),      12);
-        assertEq(uint8(AnchorRegistry.ArtifactType.ENTITY),     13);
-        assertEq(uint8(AnchorRegistry.ArtifactType.PROOF),      14);
-        assertEq(uint8(AnchorRegistry.ArtifactType.RETRACTION), 15);
-        assertEq(uint8(AnchorRegistry.ArtifactType.REVIEW),     16);
-        assertEq(uint8(AnchorRegistry.ArtifactType.VOID),       17);
-        assertEq(uint8(AnchorRegistry.ArtifactType.AFFIRMED),   18);
-        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      19);
+        assertEq(uint8(AnchorRegistry.ArtifactType.NOTE),       10);
+        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT),      11);
+        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT),    12);
+        assertEq(uint8(AnchorRegistry.ArtifactType.LEGAL),      13);
+        assertEq(uint8(AnchorRegistry.ArtifactType.ENTITY),     14);
+        assertEq(uint8(AnchorRegistry.ArtifactType.PROOF),      15);
+        assertEq(uint8(AnchorRegistry.ArtifactType.RETRACTION), 16);
+        assertEq(uint8(AnchorRegistry.ArtifactType.REVIEW),     17);
+        assertEq(uint8(AnchorRegistry.ArtifactType.VOID),       18);
+        assertEq(uint8(AnchorRegistry.ArtifactType.AFFIRMED),   19);
+        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      20);
     }
 
     // =========================================================================
-    // 3. LIFECYCLE TYPES (10) — EVENT
+    // 3. CONTENT TYPES (10) — NOTE
     // =========================================================================
 
-    function test_Event_EnumValue_Is10() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT), 10);
+    function test_Note_EnumValue_Is10() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.NOTE), 10);
+    }
+
+    function test_Note_Memo_Succeeds() public {
+        vm.prank(operator);
+        registry.registerNote("AR-NOT01",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not01", "MEMO-2026-03-20"),
+            "MEMO", "2026-03-20", "", "");
+        assertTrue(registry.registered("AR-NOT01"));
+
+        (AnchorRegistry.AnchorBase memory b,
+         string memory nt, string memory d,
+         string memory p, string memory url) =
+            registry.noteAnchors("AR-NOT01");
+        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.NOTE));
+        assertEq(nt,  "MEMO");
+        assertEq(d,   "2026-03-20");
+        assertEq(p,   "");
+        assertEq(url, "");
+    }
+
+    function test_Note_Meeting_Succeeds() public {
+        vm.prank(operator);
+        registry.registerNote("AR-NOT02",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not02", "MEETING-KICKOFF"),
+            "MEETING", "2026-03-20", "Ian Moore, Jane Smith, Bob Lee",
+            "https://docs.example.com/meeting/kickoff");
+        assertTrue(registry.registered("AR-NOT02"));
+
+        (, string memory nt, string memory d, string memory p, string memory url) =
+            registry.noteAnchors("AR-NOT02");
+        assertEq(nt,  "MEETING");
+        assertEq(d,   "2026-03-20");
+        assertEq(p,   "Ian Moore, Jane Smith, Bob Lee");
+        assertEq(url, "https://docs.example.com/meeting/kickoff");
+    }
+
+    function test_Note_Correspondence_Succeeds() public {
+        vm.prank(operator);
+        registry.registerNote("AR-NOT03",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not03", "EMAIL-THREAD-001"),
+            "CORRESPONDENCE", "2026-03-18", "Ian Moore, Acme Corp",
+            "https://mail.example.com/thread/001");
+        assertTrue(registry.registered("AR-NOT03"));
+        (, string memory nt,,,) = registry.noteAnchors("AR-NOT03");
+        assertEq(nt, "CORRESPONDENCE");
+    }
+
+    function test_Note_Observation_Succeeds() public {
+        vm.prank(operator);
+        registry.registerNote("AR-NOT04",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not04", "FIELD-OBSERVATION-001"),
+            "OBSERVATION", "2026-03-15", "Ian Moore", "");
+        assertTrue(registry.registered("AR-NOT04"));
+        (, string memory nt,,,) = registry.noteAnchors("AR-NOT04");
+        assertEq(nt, "OBSERVATION");
+    }
+
+    function test_Note_Field_Succeeds() public {
+        vm.prank(operator);
+        registry.registerNote("AR-NOT05",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not05", "FIELD-NOTES-SITE-A"),
+            "FIELD", "2026-03-10", "Research Team",
+            "https://fieldnotes.example.com/site-a");
+        assertTrue(registry.registered("AR-NOT05"));
+        (, string memory nt,,,) = registry.noteAnchors("AR-NOT05");
+        assertEq(nt, "FIELD");
+    }
+
+    function test_Note_Other_Succeeds() public {
+        vm.prank(operator);
+        registry.registerNote("AR-NOT06",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not06", "NOTE-OTHER"),
+            "OTHER", "2026-03-20", "", "");
+        assertTrue(registry.registered("AR-NOT06"));
+    }
+
+    function test_Note_MinimalFields_Succeeds() public {
+        vm.prank(operator);
+        registry.registerNote("AR-NOT07",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not07", "NOTE-MINIMAL"),
+            "MEMO", "2026-03-20", "", "");
+        assertTrue(registry.registered("AR-NOT07"));
+    }
+
+    function test_Note_ByBackupOperator_Succeeds() public {
+        vm.prank(opBackup);
+        registry.registerNote("AR-NOT08",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not08", "NOTE-BACKUP"),
+            "MEETING", "2026-03-20", "Backup Operator", "");
+        assertTrue(registry.registered("AR-NOT08"));
+    }
+
+    function test_Note_ByStranger_Reverts() public {
+        vm.prank(stranger);
+        vm.expectRevert(AnchorRegistry.NotOperator.selector);
+        registry.registerNote("AR-NOT09",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not09", "NOTE-STRANGER"),
+            "MEMO", "2026-03-20", "", "");
+    }
+
+    function test_Note_DuplicateArId_Reverts() public {
+        vm.prank(operator);
+        registry.registerNote("AR-NOT10",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not10", "NOTE"),
+            "MEMO", "2026-03-20", "", "");
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-NOT10"));
+        registry.registerNote("AR-NOT10",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not10b", "NOTE"),
+            "MEMO", "2026-03-20", "", "");
+    }
+
+    function test_Note_AnchoredEvent_Emitted() public {
+        vm.prank(operator);
+        vm.expectEmit(true, true, false, true);
+        emit AnchorRegistry.Anchored(
+            "AR-NOT11", operator,
+            AnchorRegistry.ArtifactType.NOTE,
+            "KICKOFF-MEETING-NOTE", "Test Artifact", "Test Author", "sha256:not11", "", ""
+        );
+        registry.registerNote("AR-NOT11",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not11", "KICKOFF-MEETING-NOTE"),
+            "MEETING", "2026-03-20", "Ian Moore, Jane Smith", "");
+    }
+
+    function test_Note_AsChildOfReport_Succeeds() public {
+        vm.prank(operator);
+        registry.registerReport("AR-RPT-PARENT",
+            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rptparent", "BASE-REPORT"),
+            "CONSULTING", "Client A", "ENG-001", "final", "Ian Moore", "Hive Advisory", "");
+
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.NOTE, "sha256:not12", "NOTE-ON-REPORT"
+        );
+        b.parentHash = "AR-RPT-PARENT";
+        vm.prank(operator);
+        registry.registerNote("AR-NOT12", b,
+            "MEMO", "2026-03-20", "", "");
+        assertTrue(registry.registered("AR-NOT12"));
+
+        (AnchorRegistry.AnchorBase memory stored,,,,) = registry.noteAnchors("AR-NOT12");
+        assertEq(stored.parentHash, "AR-RPT-PARENT");
+    }
+
+    // =========================================================================
+    // 4. LIFECYCLE TYPES (11) — EVENT
+    // =========================================================================
+
+    function test_Event_EnumValue_Is11() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT), 11);
     }
 
     function test_Event_Conference_Succeeds() public {
@@ -681,11 +832,11 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 4. TRANSACTION TYPES (11) — RECEIPT
+    // 5. TRANSACTION TYPES (12) — RECEIPT
     // =========================================================================
 
-    function test_Receipt_EnumValue_Is11() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT), 11);
+    function test_Receipt_EnumValue_Is12() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT), 12);
     }
 
     function test_Receipt_Purchase_Succeeds() public {
@@ -824,7 +975,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 5. GATED TYPES (12-14) — suppressed at launch
+    // 6. GATED TYPES (13-15) — suppressed at launch
     // =========================================================================
 
     function test_Legal_SuppressedAtLaunch() public view {
@@ -963,7 +1114,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 6. RETRACTION (type 15)
+    // 7. RETRACTION (type 16)
     // =========================================================================
 
     function test_Retraction_Succeeds() public {
@@ -1040,7 +1191,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 7. REVIEW, VOID, AFFIRMED (types 16-18)
+    // 8. REVIEW, VOID, AFFIRMED (types 17-19)
     // =========================================================================
 
     function test_Review_Succeeds() public {
@@ -1225,7 +1376,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 8. OTHER (type 19)
+    // 9. OTHER (type 20)
     // =========================================================================
 
     function test_RegisterOther() public {
@@ -1236,12 +1387,12 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-OTH01"));
     }
 
-    function test_Other_EnumValue_Is19() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER), 19);
+    function test_Other_EnumValue_Is20() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER), 20);
     }
 
     // =========================================================================
-    // 9. ACCESS CONTROL
+    // 10. ACCESS CONTROL
     // =========================================================================
 
     function test_OwnerAndRecoverySetOnDeploy() public view {
@@ -1311,7 +1462,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 10. EDGE CASES & VALIDATION
+    // 11. EDGE CASES & VALIDATION
     // =========================================================================
 
     function test_EmptyArId_Reverts() public {
@@ -1354,7 +1505,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 11. TREE INTEGRITY
+    // 12. TREE INTEGRITY
     // =========================================================================
 
     function test_ValidParentHash_Succeeds() public {
@@ -1442,8 +1593,27 @@ contract AnchorRegistryTest is Test {
         assertEq(rptBase.parentHash, "AR-RESEARCH-ROOT");
     }
 
+    function test_NoteAsChildOfMeeting_TreeIntegrity() public {
+        vm.prank(operator);
+        registry.registerNote("AR-MEETING-ROOT",
+            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:meetroot", "KICKOFF-MEETING"),
+            "MEETING", "2026-03-20", "Ian Moore, Jane Smith", "");
+
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.NOTE, "sha256:followup", "FOLLOWUP-MEMO"
+        );
+        b.parentHash = "AR-MEETING-ROOT";
+        vm.prank(operator);
+        registry.registerNote("AR-MEMO-CHILD", b,
+            "MEMO", "2026-03-21", "Ian Moore", "");
+
+        assertTrue(registry.registered("AR-MEMO-CHILD"));
+        (AnchorRegistry.AnchorBase memory noteBase,,,,) = registry.noteAnchors("AR-MEMO-CHILD");
+        assertEq(noteBase.parentHash, "AR-MEETING-ROOT");
+    }
+
     // =========================================================================
-    // 12. ANCHORED EVENT & TREEID
+    // 13. ANCHORED EVENT & TREEID
     // =========================================================================
 
     function test_AR_TREE_ID_Constant() public view {
@@ -1460,6 +1630,18 @@ contract AnchorRegistryTest is Test {
             "git:tid", "MIT", "Python", "v1.0.0", "https://test");
         (AnchorRegistry.AnchorBase memory stored,,,,,) = registry.codeAnchors("AR-TID01");
         assertEq(stored.treeId, "sha256:tree-fingerprint-abc123");
+    }
+
+    function test_TreeId_StoredInBase_Note() public {
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.NOTE, "sha256:tid-note", "TREEID-NOTE"
+        );
+        b.treeId = "sha256:note-tree-fingerprint";
+        vm.prank(operator);
+        registry.registerNote("AR-TID-NOTE", b,
+            "MEMO", "2026-03-20", "", "");
+        (AnchorRegistry.AnchorBase memory stored,,,,) = registry.noteAnchors("AR-TID-NOTE");
+        assertEq(stored.treeId, "sha256:note-tree-fingerprint");
     }
 
     function test_TreeId_StoredInBase_Report() public {
@@ -1514,7 +1696,6 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         registry.registerReview("AR-DISP-REV01", b,
             "AR-DISPUTE-TARGET", "FALSE_AUTHORSHIP", "https://anchorregistry.com/disputes/1");
-        // ReviewAnchor has 4 fields: base, targetArId, reviewType, evidenceUrl
         (AnchorRegistry.AnchorBase memory stored,,,) = registry.reviewAnchors("AR-DISP-REV01");
         assertEq(stored.treeId, "ar-operator-v1");
     }
@@ -1581,7 +1762,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 13. RECOVERY & GRIEFING DEFENCE
+    // 14. RECOVERY & GRIEFING DEFENCE
     // =========================================================================
 
     function test_RecoveryInitiated() public {
