@@ -6,6 +6,8 @@ AnchorRegistry is immutable provenance infrastructure for the AI era. Any creato
 
 **SPDX-Anchor: anchorregistry.ai/AR-2026-0000001**
 
+> Patent pending — USPTO Provisional Application #64/009,841, filed March 18, 2026.
+
 ---
 
 ## What This Is
@@ -32,7 +34,7 @@ ar-onchain/
 ├── src/
 │   └── AnchorRegistry.sol      # The contract — deployed once, immutable forever
 ├── test/
-│   └── AnchorRegistry.t.sol    # Full Foundry test suite (78 tests)
+│   └── AnchorRegistry.t.sol    # Full Foundry test suite (177 tests)
 ├── script/
 │   └── Deploy.s.sol            # Deployment script (Sepolia + Base mainnet)
 ├── foundry.toml
@@ -94,32 +96,49 @@ forge script script/Deploy.s.sol \
 
 ### Artifact Types
 
-17 artifact types in 6 logical groups:
+22 artifact types in 8 logical groups:
 
-| Group | Types | Description |
-|-------|-------|-------------|
-| **CONTENT** (0-8) | `CODE`, `RESEARCH`, `DATA`, `MODEL`, `AGENT`, `MEDIA`, `TEXT`, `POST`, `ONCHAIN` | What creators make. Active at launch. `onlyOperator`. |
-| **GATED** (9-11) | `LEGAL`, `ENTITY`, `PROOF` | Suppressed at launch. Separate operator gates. |
-| **SELF-SERVICE** (12) | `RETRACTION` | Owner-initiated. Active at launch. Operator submits on behalf of creator after ownership token verification. |
-| **REVIEW** (13-15) | `REVIEW`, `VOID`, `AFFIRMED` | AnchorRegistry operator-only. Active at launch. |
-| **CATCH-ALL** (16) | `OTHER` | Everything else. |
+| Group | Types | Enum | Description |
+|-------|-------|------|-------------|
+| **CONTENT** | `CODE`, `RESEARCH`, `DATA`, `MODEL`, `AGENT`, `MEDIA`, `TEXT`, `POST`, `ONCHAIN`, `REPORT`, `NOTE` | 0–10 | What creators make. Active at launch. `onlyOperator`. |
+| **LIFECYCLE** | `EVENT` | 11 | Human events and machine/agent processes. Active at launch. `onlyOperator`. |
+| **TRANSACTION** | `RECEIPT` | 12 | Proof of commercial, medical, financial, government, event, or service transactions. Active at launch. `onlyOperator`. |
+| **GATED** | `LEGAL`, `ENTITY`, `PROOF` | 13–15 | Suppressed at launch. Separate operator gates. |
+| **SELF-SERVICE** | `RETRACTION` | 16 | Owner-initiated. Active at launch. Operator submits on behalf of creator after ownership token verification. |
+| **REVIEW** | `REVIEW`, `VOID`, `AFFIRMED` | 17–19 | AnchorRegistry operator-only. Active at launch. |
+| **BILLING** | `ACCOUNT` | 20 | Prepaid registration capacity. Active at launch. `onlyOperator`. |
+| **CATCH-ALL** | `OTHER` | 21 | Everything else. |
 
 **Gated type activation:**
-- `LEGAL` — opens in V2-V3 with document verification. Owner calls `addLegalOperator()`.
-- `ENTITY` — opens in V2 with domain verification. Owner calls `addEntityOperator()`.
-- `PROOF` — opens in V4 with ZK infrastructure. Owner calls `addProofOperator()`.
+- `LEGAL` (13) — opens in V2-V3 with document verification. Owner calls `addLegalOperator()`.
+- `ENTITY` (14) — opens in V2 with domain verification. Owner calls `addEntityOperator()`.
+- `PROOF` (15) — opens in V4 with ZK infrastructure. Owner calls `addProofOperator()`.
+
+### AnchorBase
+
+Every anchor type extends `AnchorBase`:
+
+| Field | Description |
+|-------|-------------|
+| `artifactType` | Enum value (0–21) |
+| `manifestHash` | SHA-256 of full manifest — the on-chain provenance commitment |
+| `parentHash` | AR-ID of parent anchor, empty if root |
+| `descriptor` | Human-readable slug e.g. `ICMOORE-2026-UNISWAPPY` |
+| `title` | Artifact title e.g. `UniswapPy v1.0` |
+| `author` | Artifact author e.g. `Ian Moore` |
+| `treeId` | Cryptographic tree identity: `sha256(anchorKey + rootArId)` for tree holders. `AR_TREE_ID` constant (`"ar-operator-v1"`) for all REVIEW, VOID, AFFIRMED anchors registered by AnchorRegistry. |
 
 ### Access Control
 
 Four-tier permissioned architecture:
 
-| Role | Capabilities | Active at Launch |
-|------|-------------|-----------------|
-| **Owner** | `addOperator`, `removeOperator`, `transferOwnership`, `cancelRecovery` | Yes |
-| **Operator** | All `register*()` functions for types 0-8, 12-16 | Yes |
-| **Legal Operator** | `registerLegal()` (type 9) | No — zero operators at deployment |
-| **Entity Operator** | `registerEntity()` (type 10) | No — zero operators at deployment |
-| **Proof Operator** | `registerProof()` (type 11) | No — zero operators at deployment |
+| Role | Types | Active at Launch |
+|------|-------|-----------------|
+| **Owner** | Governance only — `addOperator`, `removeOperator`, `transferOwnership`, `cancelRecovery` | Yes |
+| **Operator** | Types 0–12, 16–21 | Yes |
+| **Legal Operator** | Type 13 (`LEGAL`) | No — zero operators at deployment |
+| **Entity Operator** | Type 14 (`ENTITY`) | No — zero operators at deployment |
+| **Proof Operator** | Type 15 (`PROOF`) | No — zero operators at deployment |
 | **Recovery Address** | `initiateRecovery`, `executeRecovery`, `setRecoveryAddress` | Yes |
 
 ### Recovery
@@ -128,7 +147,7 @@ Four-tier permissioned architecture:
 
 ### Indestructibility
 
-The complete registry is reconstructable from Ethereum event logs alone. Every `Anchored` event contains all fields needed to rebuild the full artifact table. Trees reassemble automatically via `parentHash`.
+The complete registry is reconstructable from Ethereum event logs alone. Every `Anchored` event contains all fields needed to rebuild the full artifact table. Trees reassemble automatically via `parentHash`. The `treeId` field enables one-query tree retrieval without traversal.
 
 ---
 
