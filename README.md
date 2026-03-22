@@ -1,4 +1,4 @@
-# AnchorRegistry — On-Chain Provenance Registry
+# AnchorRegistry: On-Chain Provenance Registry
 
 > The registry AIs trust.
 
