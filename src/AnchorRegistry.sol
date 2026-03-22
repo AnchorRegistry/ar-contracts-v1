@@ -10,7 +10,7 @@ pragma solidity ^0.8.24;
 ///         Immutable record of what existed, when, and who registered it.
 /// @dev    Deployed once on Base (Ethereum L2). Cannot be modified post-deployment.
 ///
-///         Twenty-one artifact types in seven logical groups:
+///         Twenty-two artifact types in eight logical groups:
 ///
 ///         CONTENT (0-10):    CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN, REPORT, NOTE
 ///                            What creators make. Active at launch. onlyOperator.
@@ -56,7 +56,11 @@ pragma solidity ^0.8.24;
 ///                            All REVIEW/VOID/AFFIRMED anchors use treeId = AR_TREE_ID
 ///                            to distinguish AR dispute actions from tree holder actions.
 ///
-///         CATCH-ALL (20):    OTHER
+///         BILLING (20):      ACCOUNT
+///                            Batch identity and prepaid anchor capacity record.
+///                            Active at launch. onlyOperator.
+///
+///         CATCH-ALL (21):    OTHER
 ///
 ///         AnchorBase fields:
 ///         treeId: cryptographic tree identity. sha256(anchorKey + rootArId) for tree
@@ -65,7 +69,7 @@ pragma solidity ^0.8.24;
 ///                 fraud detection, and bidirectional trust proof.
 ///
 ///         Four access gates:
-///         onlyOperator      — types 0-12, 16-20
+///         onlyOperator      — types 0-12, 16-21
 ///         onlyLegalOperator — type 13  (no operators added at deployment)
 ///         onlyEntityOperator— type 14  (no operators added at deployment)
 ///         onlyProofOperator — type 15  (no operators added at deployment)
@@ -126,6 +130,7 @@ contract AnchorRegistry {
     error RecoveryDelayNotMet();
     error RecoveryLockedOut();
     error ZeroAddress();
+    error InsufficientCapacity();
 
     // =========================================================================
     // ACCESS CONTROL MODIFIERS
@@ -296,8 +301,11 @@ contract AnchorRegistry {
         VOID,        // 18
         AFFIRMED,    // 19
 
-        // ── CATCH-ALL (20) ────────────────────────────────────────────────
-        OTHER        // 20
+        // ── BILLING (20) ──────────────────────────────────────────────────
+        ACCOUNT,     // 20 — batch identity + prepaid anchor capacity (BILLING)
+
+        // ── CATCH-ALL (21) ────────────────────────────────────────────────
+        OTHER        // 21
     }
 
     // =========================================================================
@@ -626,7 +634,16 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // CATCH-ALL STRUCT — type 20
+    // BILLING STRUCT — type 20
+    // =========================================================================
+
+    struct AccountAnchor {
+        AnchorBase base;
+        uint256 capacity;  // prepaid anchor capacity
+    }
+
+    // =========================================================================
+    // CATCH-ALL STRUCT — type 21
     // =========================================================================
 
     struct OtherAnchor {
@@ -661,6 +678,7 @@ contract AnchorRegistry {
     mapping(string => ReviewAnchor)     public reviewAnchors;
     mapping(string => VoidAnchor)       public voidAnchors;
     mapping(string => AffirmedAnchor)   public affirmedAnchors;
+    mapping(string => AccountAnchor)    public accountAnchors;
     mapping(string => OtherAnchor)      public otherAnchors;
 
     mapping(string => bool) public registered;
@@ -1046,7 +1064,22 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER FUNCTIONS — CATCH-ALL (type 20)
+    // REGISTER FUNCTIONS — BILLING (type 20)
+    // =========================================================================
+
+    function registerAccount(
+        string calldata arId,
+        AnchorBase calldata base,
+        uint256 capacity
+    ) external onlyOperator {
+        if (capacity < 10) revert InsufficientCapacity();
+        _validateBase(arId, base);
+        accountAnchors[arId] = AccountAnchor(base, capacity);
+        _register(arId, base);
+    }
+
+    // =========================================================================
+    // REGISTER FUNCTIONS — CATCH-ALL (type 21)
     // =========================================================================
 
     function registerOther(

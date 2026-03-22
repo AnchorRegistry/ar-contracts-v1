@@ -9,7 +9,7 @@ import "forge-std/Test.sol";
 import "../src/AnchorRegistry.sol";
 
 /// @title  AnchorRegistryTest
-/// @notice Foundry test suite for AnchorRegistry.sol (21 artifact types).
+/// @notice Foundry test suite for AnchorRegistry.sol (22 artifact types).
 ///
 ///         Sections:
 ///         1.  Content types (0-8) — CODE through ONCHAIN
@@ -20,12 +20,13 @@ import "../src/AnchorRegistry.sol";
 ///         6.  Gated types (13-15) — LEGAL, ENTITY, PROOF
 ///         7.  RETRACTION (type 16)
 ///         8.  REVIEW, VOID, AFFIRMED (types 17-19)
-///         9.  OTHER (type 20)
-///         10. Access control
-///         11. Edge cases & validation
-///         12. Tree integrity
-///         13. Anchored event & treeId
-///         14. Recovery & griefing defence
+///         9.  BILLING (type 20) — ACCOUNT
+///         10. OTHER (type 21)
+///         11. Access control
+///         12. Edge cases & validation
+///         13. Tree integrity
+///         14. Anchored event & treeId
+///         15. Recovery & griefing defence
 
 contract AnchorRegistryTest is Test {
 
@@ -394,7 +395,8 @@ contract AnchorRegistryTest is Test {
         assertEq(uint8(AnchorRegistry.ArtifactType.REVIEW),     17);
         assertEq(uint8(AnchorRegistry.ArtifactType.VOID),       18);
         assertEq(uint8(AnchorRegistry.ArtifactType.AFFIRMED),   19);
-        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      20);
+        assertEq(uint8(AnchorRegistry.ArtifactType.ACCOUNT),    20);
+        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      21);
     }
 
     // =========================================================================
@@ -1376,7 +1378,124 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 9. OTHER (type 20)
+    // 9. BILLING (type 20) — ACCOUNT
+    // =========================================================================
+
+    function test_Account_EnumValue_Is20() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.ACCOUNT), 20);
+    }
+
+    function test_Account_HappyPath_Succeeds() public {
+        vm.prank(operator);
+        registry.registerAccount(
+            "AR-ACC01",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc01", "ACCOUNT-BATCH-001"),
+            25
+        );
+        assertTrue(registry.registered("AR-ACC01"));
+    }
+
+    function test_Account_Capacity_StoredCorrectly() public {
+        vm.prank(operator);
+        registry.registerAccount(
+            "AR-ACC02",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc02", "ACCOUNT-BATCH-002"),
+            42
+        );
+        (, uint256 cap) = registry.accountAnchors("AR-ACC02");
+        assertEq(cap, 42);
+    }
+
+    function test_Account_ExactMinimumCapacity_Succeeds() public {
+        vm.prank(operator);
+        registry.registerAccount(
+            "AR-ACC03",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc03", "ACCOUNT-MIN"),
+            10
+        );
+        (, uint256 cap) = registry.accountAnchors("AR-ACC03");
+        assertEq(cap, 10);
+    }
+
+    function test_Account_BelowMinimumCapacity_Reverts() public {
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.InsufficientCapacity.selector);
+        registry.registerAccount(
+            "AR-ACC03B",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc03b", "ACCOUNT-LOW"),
+            9
+        );
+    }
+
+    function test_Account_ZeroCapacity_Reverts() public {
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.InsufficientCapacity.selector);
+        registry.registerAccount(
+            "AR-ACC03C",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc03c", "ACCOUNT-ZERO"),
+            0
+        );
+    }
+
+    function test_Account_LargeCapacity_Succeeds() public {
+        vm.prank(operator);
+        registry.registerAccount(
+            "AR-ACC04",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc04", "ACCOUNT-LARGE"),
+            1000
+        );
+        (, uint256 cap) = registry.accountAnchors("AR-ACC04");
+        assertEq(cap, 1000);
+    }
+
+    function test_Account_InvalidParent_Reverts() public {
+        AnchorRegistry.AnchorBase memory b = _base(
+            AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc05", "ACCOUNT-BADPARENT"
+        );
+        b.parentHash = "AR-DOESNOTEXIST";
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidParent.selector, "AR-DOESNOTEXIST"));
+        registry.registerAccount("AR-ACC05", b, 25);
+    }
+
+    function test_Account_AlreadyRegistered_Reverts() public {
+        vm.prank(operator);
+        registry.registerAccount(
+            "AR-ACC06",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc06", "ACCOUNT"),
+            25
+        );
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-ACC06"));
+        registry.registerAccount(
+            "AR-ACC06",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc06b", "ACCOUNT"),
+            25
+        );
+    }
+
+    function test_Account_EmptyManifestHash_Reverts() public {
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.EmptyManifestHash.selector);
+        registry.registerAccount(
+            "AR-ACC07",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "", "ACCOUNT-NOHASH"),
+            25
+        );
+    }
+
+    function test_Account_ByStranger_Reverts() public {
+        vm.prank(stranger);
+        vm.expectRevert(AnchorRegistry.NotOperator.selector);
+        registry.registerAccount(
+            "AR-ACC08",
+            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc08", "ACCOUNT-STRANGER"),
+            5
+        );
+    }
+
+    // =========================================================================
+    // 10. OTHER (type 21)
     // =========================================================================
 
     function test_RegisterOther() public {
@@ -1387,12 +1506,12 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-OTH01"));
     }
 
-    function test_Other_EnumValue_Is20() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER), 20);
+    function test_Other_EnumValue_Is21() public pure {
+        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER), 21);
     }
 
     // =========================================================================
-    // 10. ACCESS CONTROL
+    // 11. ACCESS CONTROL
     // =========================================================================
 
     function test_OwnerAndRecoverySetOnDeploy() public view {
@@ -1462,7 +1581,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 11. EDGE CASES & VALIDATION
+    // 12. EDGE CASES & VALIDATION
     // =========================================================================
 
     function test_EmptyArId_Reverts() public {
@@ -1505,7 +1624,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 12. TREE INTEGRITY
+    // 13. TREE INTEGRITY
     // =========================================================================
 
     function test_ValidParentHash_Succeeds() public {
@@ -1613,7 +1732,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 13. ANCHORED EVENT & TREEID
+    // 14. ANCHORED EVENT & TREEID
     // =========================================================================
 
     function test_AR_TREE_ID_Constant() public view {
@@ -1762,7 +1881,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 14. RECOVERY & GRIEFING DEFENCE
+    // 15. RECOVERY & GRIEFING DEFENCE
     // =========================================================================
 
     function test_RecoveryInitiated() public {
@@ -1883,5 +2002,354 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.entityOperators(entityOp));
         vm.prank(newOwner); registry.addProofOperator(proofOp);
         assertTrue(registry.proofOperators(proofOp));
+    }
+
+    // =========================================================================
+    // 16. ACCOUNT TREE PATTERNS
+    // =========================================================================
+    //
+    // Two valid on-chain shapes. Enforcement that ACCOUNT only attaches to root
+    // is a UI/FastAPI concern — the contract is type-agnostic on parentHash.
+    //
+    // Pattern 1 — ACCOUNT is the root:
+    //   ACCOUNT (AAAAA) capacity:25
+    //   ├── CODE    (00001)
+    //   ├── DATA    (00002)
+    //   ├── MODEL   (00003)
+    //   │   ├── CODE  (00004)
+    //   │   └── DATA  (00005)
+    //   ├── ACCOUNT (TTTTT) top-up capacity:100
+    //   └── REPORT  (00006)
+    //
+    // Pattern 2 — Content root, ACCOUNTs pinned flat as direct children:
+    //   CODE (XXXXX) original $5 root
+    //   ├── DATA    (00001) paid individually
+    //   ├── ACCOUNT (AAAAA) capacity:25
+    //   ├── ACCOUNT (TTTTT) top-up capacity:100
+    //   ├── MODEL   (00002) batch-funded
+    //   ├── AGENT   (00003) batch-funded
+    //   └── REPORT  (00004) batch-funded
+
+    // ── Helpers used only in section 16 ──────────────────────────────────────
+
+    function _childOf(
+        AnchorRegistry.ArtifactType t,
+        string memory h,
+        string memory parent
+    ) internal pure returns (AnchorRegistry.AnchorBase memory) {
+        return AnchorRegistry.AnchorBase({
+            artifactType: t,
+            manifestHash: h,
+            parentHash:   parent,
+            descriptor:   "TREE-TEST",
+            title:        "Tree Test Artifact",
+            author:       "Test Author",
+            treeId:       ""
+        });
+    }
+
+    function _registerAccount(
+        string memory arId,
+        string memory h,
+        string memory parent,
+        uint256 cap
+    ) internal {
+        AnchorRegistry.AnchorBase memory b = AnchorRegistry.AnchorBase({
+            artifactType: AnchorRegistry.ArtifactType.ACCOUNT,
+            manifestHash: h,
+            parentHash:   parent,
+            descriptor:   string(abi.encodePacked("ACCOUNT-", arId)),
+            title:        "Account Anchor",
+            author:       "Test Author",
+            treeId:       ""
+        });
+        vm.prank(operator);
+        registry.registerAccount(arId, b, cap);
+    }
+
+    // ── Pattern 1 tests ──────────────────────────────────────────────────────
+
+    function test_P1_AccountRoot_Registered() public {
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
+        assertTrue(registry.registered("AR-AAAAA"));
+        (, uint256 cap) = registry.accountAnchors("AR-AAAAA");
+        assertEq(cap, 25);
+    }
+
+    function test_P1_ContentChildrenOfAccountRoot() public {
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
+
+        vm.prank(operator);
+        registry.registerCode("AR-P1-00001",
+            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1c01", "AR-AAAAA"),
+            "git:abc", "MIT", "Python", "v1.0.0", "");
+        vm.prank(operator);
+        registry.registerData("AR-P1-00002",
+            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p1d01", "AR-AAAAA"),
+            "v1.0", "CSV", "10000", "", "");
+        vm.prank(operator);
+        registry.registerReport("AR-P1-00006",
+            _childOf(AnchorRegistry.ArtifactType.REPORT, "sha256:p1r01", "AR-AAAAA"),
+            "TECHNICAL", "", "ENG-001", "v1.0", "Ian Moore", "AR", "");
+
+        assertTrue(registry.registered("AR-P1-00001"));
+        assertTrue(registry.registered("AR-P1-00002"));
+        assertTrue(registry.registered("AR-P1-00006"));
+
+        (AnchorRegistry.AnchorBase memory cb,,,,,) = registry.codeAnchors("AR-P1-00001");
+        assertEq(cb.parentHash, "AR-AAAAA");
+
+        (AnchorRegistry.AnchorBase memory db,,,,,) = registry.dataAnchors("AR-P1-00002");
+        assertEq(db.parentHash, "AR-AAAAA");
+    }
+
+    function test_P1_NestedContentUnderAccountRoot() public {
+        // ACCOUNT root → MODEL → CODE + DATA grandchildren
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
+
+        vm.prank(operator);
+        registry.registerModel("AR-P1-00003",
+            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p1m01", "AR-AAAAA"),
+            "v1.0", "Transformer", "7B", "CommonCrawl", "");
+        vm.prank(operator);
+        registry.registerCode("AR-P1-00004",
+            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1c02", "AR-P1-00003"),
+            "git:abc", "MIT", "Python", "v1.0.0", "");
+        vm.prank(operator);
+        registry.registerData("AR-P1-00005",
+            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p1d02", "AR-P1-00003"),
+            "v1.0", "Parquet", "50000", "", "");
+
+        (AnchorRegistry.AnchorBase memory modelBase,,,,,) = registry.modelAnchors("AR-P1-00003");
+        assertEq(modelBase.parentHash, "AR-AAAAA");
+
+        (AnchorRegistry.AnchorBase memory codeBase,,,,,) = registry.codeAnchors("AR-P1-00004");
+        assertEq(codeBase.parentHash, "AR-P1-00003");
+
+        (AnchorRegistry.AnchorBase memory dataBase,,,,,) = registry.dataAnchors("AR-P1-00005");
+        assertEq(dataBase.parentHash, "AR-P1-00003");
+    }
+
+    function test_P1_TopupAccountChildOfAccountRoot() public {
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
+        _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-AAAAA", 100);
+
+        assertTrue(registry.registered("AR-TTTTT"));
+        (AnchorRegistry.AnchorBase memory topupBase, uint256 topupCap) =
+            registry.accountAnchors("AR-TTTTT");
+        assertEq(topupBase.parentHash, "AR-AAAAA");
+        assertEq(topupCap, 100);
+    }
+
+    function test_P1_CapacityStoredIndependently() public {
+        // Contract stores each ACCOUNT capacity independently.
+        // Off-chain sums them — this confirms the on-chain values are correct.
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
+        _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-AAAAA", 100);
+
+        (, uint256 rootCap)  = registry.accountAnchors("AR-AAAAA");
+        (, uint256 topupCap) = registry.accountAnchors("AR-TTTTT");
+        assertEq(rootCap,  25);
+        assertEq(topupCap, 100);
+        // off-chain total would be 125 — not computed on-chain
+    }
+
+    function test_P1_FullTree() public {
+        // Complete Pattern 1 tree
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
+
+        vm.prank(operator);
+        registry.registerCode("AR-P1-00001",
+            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1c01", "AR-AAAAA"),
+            "git:abc", "MIT", "Python", "v1.0.0", "");
+        vm.prank(operator);
+        registry.registerData("AR-P1-00002",
+            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p1d01", "AR-AAAAA"),
+            "v1.0", "CSV", "10000", "", "");
+        vm.prank(operator);
+        registry.registerModel("AR-P1-00003",
+            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p1m01", "AR-AAAAA"),
+            "v1.0", "Transformer", "7B", "", "");
+        vm.prank(operator);
+        registry.registerCode("AR-P1-00004",
+            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1c02", "AR-P1-00003"),
+            "git:def", "MIT", "Python", "v1.0.1", "");
+        vm.prank(operator);
+        registry.registerData("AR-P1-00005",
+            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p1d02", "AR-P1-00003"),
+            "v1.0", "Parquet", "50000", "", "");
+        _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-AAAAA", 100);
+        vm.prank(operator);
+        registry.registerReport("AR-P1-00006",
+            _childOf(AnchorRegistry.ArtifactType.REPORT, "sha256:p1r01", "AR-AAAAA"),
+            "TECHNICAL", "", "ENG-001", "v1.0", "Ian Moore", "AR", "");
+
+        string[7] memory ids = ["AR-AAAAA", "AR-P1-00001", "AR-P1-00002",
+                                  "AR-P1-00003", "AR-P1-00004", "AR-P1-00005", "AR-TTTTT"];
+        for (uint256 i = 0; i < ids.length; i++) {
+            assertTrue(registry.registered(ids[i]));
+        }
+
+        (AnchorRegistry.AnchorBase memory m,,,,,) = registry.modelAnchors("AR-P1-00003");
+        assertEq(m.parentHash, "AR-AAAAA");
+
+        (AnchorRegistry.AnchorBase memory c,,,,,) = registry.codeAnchors("AR-P1-00004");
+        assertEq(c.parentHash, "AR-P1-00003");
+
+        (AnchorRegistry.AnchorBase memory t,) = registry.accountAnchors("AR-TTTTT");
+        assertEq(t.parentHash, "AR-AAAAA");
+    }
+
+    // ── Pattern 2 tests ──────────────────────────────────────────────────────
+
+    function test_P2_ContentRoot_Registered() public {
+        _code("AR-XXXXX", "sha256:xxxxx");
+        assertTrue(registry.registered("AR-XXXXX"));
+    }
+
+    function test_P2_AccountPinnedToContentRoot() public {
+        _code("AR-XXXXX", "sha256:xxxxx");
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
+
+        assertTrue(registry.registered("AR-AAAAA"));
+        (AnchorRegistry.AnchorBase memory b, uint256 cap) = registry.accountAnchors("AR-AAAAA");
+        assertEq(b.parentHash, "AR-XXXXX");
+        assertEq(cap, 25);
+    }
+
+    function test_P2_MultipleAccountSiblingsOnContentRoot() public {
+        _code("AR-XXXXX", "sha256:xxxxx");
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
+        _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-XXXXX", 100);
+
+        (AnchorRegistry.AnchorBase memory a,  uint256 capA) = registry.accountAnchors("AR-AAAAA");
+        (AnchorRegistry.AnchorBase memory tt, uint256 capT) = registry.accountAnchors("AR-TTTTT");
+        assertEq(a.parentHash,  "AR-XXXXX");
+        assertEq(tt.parentHash, "AR-XXXXX");
+        assertEq(capA, 25);
+        assertEq(capT, 100);
+    }
+
+    function test_P2_ContentSiblingsAlongsideAccounts() public {
+        // DATA paid individually, MODEL/AGENT/REPORT batch-funded — all siblings
+        _code("AR-XXXXX", "sha256:xxxxx");
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
+
+        vm.prank(operator);
+        registry.registerData("AR-P2-00001",
+            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p2d01", "AR-XXXXX"),
+            "v1.0", "CSV", "5000", "", "");
+        vm.prank(operator);
+        registry.registerModel("AR-P2-00002",
+            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p2m01", "AR-XXXXX"),
+            "v1.0", "Transformer", "7B", "", "");
+        vm.prank(operator);
+        registry.registerAgent("AR-P2-00003",
+            _childOf(AnchorRegistry.ArtifactType.AGENT, "sha256:p2a01", "AR-XXXXX"),
+            "v0.1", "Python 3.11", "inference", "");
+        vm.prank(operator);
+        registry.registerReport("AR-P2-00004",
+            _childOf(AnchorRegistry.ArtifactType.REPORT, "sha256:p2r01", "AR-XXXXX"),
+            "TECHNICAL", "", "ENG-002", "v1.0", "Ian Moore", "AR", "");
+
+        (AnchorRegistry.AnchorBase memory db,,,,,) = registry.dataAnchors("AR-P2-00001");
+        assertEq(db.parentHash, "AR-XXXXX");
+
+        (AnchorRegistry.AnchorBase memory mb,,,,,) = registry.modelAnchors("AR-P2-00002");
+        assertEq(mb.parentHash, "AR-XXXXX");
+
+        (AnchorRegistry.AnchorBase memory ab,,,,) = registry.agentAnchors("AR-P2-00003");
+        assertEq(ab.parentHash, "AR-XXXXX");
+
+        (AnchorRegistry.AnchorBase memory rb,,,,,,,) = registry.reportAnchors("AR-P2-00004");
+        assertEq(rb.parentHash, "AR-XXXXX");
+    }
+
+    function test_P2_TopupAccountSiblingOfOriginalAccount() public {
+        _code("AR-XXXXX", "sha256:xxxxx");
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
+        _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-XXXXX", 100);
+
+        (AnchorRegistry.AnchorBase memory a, uint256 capA) = registry.accountAnchors("AR-AAAAA");
+        (AnchorRegistry.AnchorBase memory t, uint256 capT) = registry.accountAnchors("AR-TTTTT");
+        assertEq(a.parentHash, "AR-XXXXX");
+        assertEq(t.parentHash, "AR-XXXXX");
+        assertEq(capA, 25);
+        assertEq(capT, 100);
+        // off-chain total = 125
+    }
+
+    function test_P2_FullTree() public {
+        // Complete Pattern 2 tree
+        _code("AR-XXXXX", "sha256:xxxxx");
+
+        vm.prank(operator);
+        registry.registerData("AR-P2-00001",
+            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p2d01", "AR-XXXXX"),
+            "v1.0", "CSV", "5000", "", "");
+        _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
+        _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-XXXXX", 100);
+        vm.prank(operator);
+        registry.registerModel("AR-P2-00002",
+            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p2m01", "AR-XXXXX"),
+            "v1.0", "Transformer", "7B", "", "");
+        vm.prank(operator);
+        registry.registerAgent("AR-P2-00003",
+            _childOf(AnchorRegistry.ArtifactType.AGENT, "sha256:p2a01", "AR-XXXXX"),
+            "v0.1", "Python 3.11", "inference", "");
+        vm.prank(operator);
+        registry.registerReport("AR-P2-00004",
+            _childOf(AnchorRegistry.ArtifactType.REPORT, "sha256:p2r01", "AR-XXXXX"),
+            "TECHNICAL", "", "ENG-002", "v1.0", "Ian Moore", "AR", "");
+
+        string[7] memory ids = ["AR-XXXXX", "AR-P2-00001", "AR-AAAAA",
+                                  "AR-TTTTT", "AR-P2-00002", "AR-P2-00003", "AR-P2-00004"];
+        for (uint256 i = 0; i < ids.length; i++) {
+            assertTrue(registry.registered(ids[i]));
+        }
+
+        (AnchorRegistry.AnchorBase memory accBase,) = registry.accountAnchors("AR-AAAAA");
+        assertEq(accBase.parentHash, "AR-XXXXX");
+
+        (AnchorRegistry.AnchorBase memory topBase,) = registry.accountAnchors("AR-TTTTT");
+        assertEq(topBase.parentHash, "AR-XXXXX");
+
+        (AnchorRegistry.AnchorBase memory modBase,,,,,) = registry.modelAnchors("AR-P2-00002");
+        assertEq(modBase.parentHash, "AR-XXXXX");
+    }
+
+    // ── Cross-pattern ─────────────────────────────────────────────────────────
+
+    function test_BothPatterns_ContractIsAgnostic() public {
+        // P1 and P2 trees coexist in the same registry deployment
+
+        // P1 — ACCOUNT root
+        _registerAccount("AR-P1-ROOT", "sha256:p1root", "", 25);
+        vm.prank(operator);
+        registry.registerCode("AR-P1-C01",
+            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1cc01", "AR-P1-ROOT"),
+            "git:abc", "MIT", "Python", "v1.0.0", "");
+        _registerAccount("AR-P1-TOPUP", "sha256:p1topup", "AR-P1-ROOT", 50);
+
+        // P2 — content root
+        _code("AR-P2-ROOT", "sha256:p2root");
+        _registerAccount("AR-P2-ACC", "sha256:p2acc", "AR-P2-ROOT", 25);
+        vm.prank(operator);
+        registry.registerModel("AR-P2-M01",
+            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p2mm01", "AR-P2-ROOT"),
+            "v1.0", "CNN", "1B", "", "");
+
+        // P1 intact
+        (AnchorRegistry.AnchorBase memory p1acc,  uint256 p1cap)  = registry.accountAnchors("AR-P1-ROOT");
+        (AnchorRegistry.AnchorBase memory p1top,  uint256 p1tcap) = registry.accountAnchors("AR-P1-TOPUP");
+        assertEq(p1acc.parentHash, "");
+        assertEq(p1cap,  25);
+        assertEq(p1top.parentHash, "AR-P1-ROOT");
+        assertEq(p1tcap, 50);
+
+        // P2 intact
+        (AnchorRegistry.AnchorBase memory p2acc, uint256 p2cap) = registry.accountAnchors("AR-P2-ACC");
+        assertEq(p2acc.parentHash, "AR-P2-ROOT");
+        assertEq(p2cap, 25);
     }
 }
