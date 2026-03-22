@@ -22,7 +22,7 @@ AnchorRegistry is immutable provenance infrastructure for the AI era. Any creato
 
 - Not an NFT
 - Not a storage product — files never leave the user's browser
-- Not a subscription — one payment, permanent record
+- Not a subscription — no recurring fees
 - Not Web3 theatre — the blockchain is plumbing, invisible to the user
 
 ---
