@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 // Change Date:    March 12, 2028
 // Change License: Apache-2.0
-// Licensor:       Ian Moore (icmoore)
+// Licensor:       Ian Moore (icmoore) @ anchorregistry.com
 
 pragma solidity ^0.8.24;
 
@@ -17,7 +17,7 @@ import "./AnchorTypes.sol";
 ///         CONTENT (0-10):    CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN, REPORT, NOTE
 ///         LIFECYCLE (11):    EVENT
 ///         TRANSACTION (12):  RECEIPT
-///         GATED (13-15):     LEGAL, ENTITY, PROOF  (suppressed at launch)
+///         GATED (13-15):     LEGAL, ENTITY, PROOF  
 ///         SELF-SERVICE (16): RETRACTION
 ///         REVIEW (17-19):    REVIEW, VOID, AFFIRMED
 ///         BILLING (20):      ACCOUNT
