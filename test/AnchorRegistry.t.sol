@@ -43,8 +43,8 @@ contract AnchorRegistryTest is Test {
     address public entityOp    = address(0x9);
     address public proofOp     = address(0xA);
 
-    AnchorRegistry.AnchorBase base = AnchorRegistry.AnchorBase({
-        artifactType: AnchorRegistry.ArtifactType.CODE,
+    AnchorBase base = AnchorBase({
+        artifactType: ArtifactType.CODE,
         manifestHash: "sha256:abc123",
         parentHash:   "",
         descriptor:   "ICMOORE-2026-TEST",
@@ -63,11 +63,11 @@ contract AnchorRegistryTest is Test {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     function _base(
-        AnchorRegistry.ArtifactType t,
+        ArtifactType t,
         string memory h,
         string memory d
-    ) internal pure returns (AnchorRegistry.AnchorBase memory) {
-        return AnchorRegistry.AnchorBase({
+    ) internal pure returns (AnchorBase memory) {
+        return AnchorBase({
             artifactType: t,
             manifestHash: h,
             parentHash:   "",
@@ -79,10 +79,10 @@ contract AnchorRegistryTest is Test {
     }
 
     function _child(string memory h, string memory parent)
-        internal pure returns (AnchorRegistry.AnchorBase memory)
+        internal pure returns (AnchorBase memory)
     {
-        return AnchorRegistry.AnchorBase({
-            artifactType: AnchorRegistry.ArtifactType.CODE,
+        return AnchorBase({
+            artifactType: ArtifactType.CODE,
             manifestHash: h,
             parentHash:   parent,
             descriptor:   "CHILD",
@@ -94,21 +94,21 @@ contract AnchorRegistryTest is Test {
 
     function _code(string memory arId, string memory h) internal {
         vm.prank(operator);
-        registry.registerCode(arId,
-            _base(AnchorRegistry.ArtifactType.CODE, h, "TEST"),
-            "git:abc", "MIT", "TypeScript", "v1.0.0", "https://test");
+        registry.registerContent(arId,
+            _base(ArtifactType.CODE, h, "TEST"),
+            abi.encode("git:abc", "MIT", "TypeScript", "v1.0.0", "https://test"));
     }
 
     function _review(string memory reviewArId, string memory targetArId) internal {
         _code(targetArId, string(abi.encodePacked("sha256:", targetArId)));
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REVIEW,
+        AnchorBase memory b = _base(
+            ArtifactType.REVIEW,
             string(abi.encodePacked("sha256:review-", reviewArId)),
             string(abi.encodePacked("REVIEW-", reviewArId))
         );
         b.parentHash = targetArId;
         vm.prank(operator);
-        registry.registerReview(reviewArId, b, targetArId, "FALSE_AUTHORSHIP", "https://test");
+        registry.registerTargeted(reviewArId, b, targetArId, abi.encode("FALSE_AUTHORSHIP", "https://test"));
     }
 
     // =========================================================================
@@ -117,106 +117,106 @@ contract AnchorRegistryTest is Test {
 
     function test_RegisterCode() public {
         vm.prank(operator);
-        registry.registerCode("AR-CODE01", base,
-            "git:abc", "MIT", "TypeScript", "v1.0.0", "https://test");
+        registry.registerContent("AR-CODE01", base,
+            abi.encode("git:abc", "MIT", "TypeScript", "v1.0.0", "https://test"));
         assertTrue(registry.registered("AR-CODE01"));
     }
 
     function test_RegisterResearch() public {
         vm.prank(operator);
-        registry.registerResearch("AR-RES01",
-            _base(AnchorRegistry.ArtifactType.RESEARCH, "sha256:res01", "PAPER"),
-            "10.1000/test", "MIT", "Jane Smith, John Doe", "https://arxiv.org/test");
+        registry.registerContent("AR-RES01",
+            _base(ArtifactType.RESEARCH, "sha256:res01", "PAPER"),
+            abi.encode("10.1000/test", "MIT", "Jane Smith, John Doe", "https://arxiv.org/test"));
         assertTrue(registry.registered("AR-RES01"));
     }
 
     function test_RegisterData() public {
         vm.prank(operator);
-        registry.registerData("AR-DATA01",
-            _base(AnchorRegistry.ArtifactType.DATA, "sha256:data01", "DATASET"),
-            "v1.0.0", "CSV", "1000000", "https://schema.org/test", "https://huggingface.co/test");
+        registry.registerContent("AR-DATA01",
+            _base(ArtifactType.DATA, "sha256:data01", "DATASET"),
+            abi.encode("v1.0.0", "CSV", "1000000", "https://schema.org/test", "https://huggingface.co/test"));
         assertTrue(registry.registered("AR-DATA01"));
     }
 
     function test_RegisterModel() public {
         vm.prank(operator);
-        registry.registerModel("AR-MDL01",
-            _base(AnchorRegistry.ArtifactType.MODEL, "sha256:mdl01", "MODEL"),
-            "v1.0.0", "Transformer", "7B", "CommonCrawl", "https://huggingface.co/test");
+        registry.registerContent("AR-MDL01",
+            _base(ArtifactType.MODEL, "sha256:mdl01", "MODEL"),
+            abi.encode("v1.0.0", "Transformer", "7B", "CommonCrawl", "https://huggingface.co/test"));
         assertTrue(registry.registered("AR-MDL01"));
     }
 
     function test_RegisterAgent() public {
         vm.prank(operator);
-        registry.registerAgent("AR-AGT01",
-            _base(AnchorRegistry.ArtifactType.AGENT, "sha256:agt01", "AGENT"),
-            "v0.1.0", "Python 3.11", "web search, code execution", "https://github.com/test");
+        registry.registerContent("AR-AGT01",
+            _base(ArtifactType.AGENT, "sha256:agt01", "AGENT"),
+            abi.encode("v0.1.0", "Python 3.11", "web search, code execution", "https://github.com/test"));
         assertTrue(registry.registered("AR-AGT01"));
     }
 
     function test_RegisterMedia() public {
         vm.prank(operator);
-        registry.registerMedia("AR-MED01",
-            _base(AnchorRegistry.ArtifactType.MEDIA, "sha256:med01", "MEDIA"),
-            "image/png", "PNG", "1920x1080", "USRC17607839", "https://ipfs.io/test");
+        registry.registerContent("AR-MED01",
+            _base(ArtifactType.MEDIA, "sha256:med01", "MEDIA"),
+            abi.encode("image/png", "PNG", "1920x1080", "USRC17607839", "https://ipfs.io/test"));
         assertTrue(registry.registered("AR-MED01"));
     }
 
     function test_RegisterText() public {
         vm.prank(operator);
-        registry.registerText("AR-TXT01",
-            _base(AnchorRegistry.ArtifactType.TEXT, "sha256:txt01", "ARTICLE"),
-            "978-3-16-148410-0", "O'Reilly Media", "English", "https://medium.com/test");
+        registry.registerContent("AR-TXT01",
+            _base(ArtifactType.TEXT, "sha256:txt01", "ARTICLE"),
+            abi.encode("978-3-16-148410-0", "O'Reilly Media", "English", "https://medium.com/test"));
         assertTrue(registry.registered("AR-TXT01"));
     }
 
     function test_RegisterPost() public {
         vm.prank(operator);
-        registry.registerPost("AR-PST01",
-            _base(AnchorRegistry.ArtifactType.POST, "sha256:pst01", "TWEET"),
-            "X/Twitter", "1234567890", "2026-03-16", "https://x.com/test");
+        registry.registerContent("AR-PST01",
+            _base(ArtifactType.POST, "sha256:pst01", "TWEET"),
+            abi.encode("X/Twitter", "1234567890", "2026-03-16", "https://x.com/test"));
         assertTrue(registry.registered("AR-PST01"));
     }
 
     function test_RegisterOnChain_ByAddress() public {
         vm.prank(operator);
-        registry.registerOnChain("AR-ONC01",
-            _base(AnchorRegistry.ArtifactType.ONCHAIN, "sha256:onc01", "WALLET-CLAIM"),
-            "base", "ADDRESS",
+        registry.registerContent("AR-ONC01",
+            _base(ArtifactType.ONCHAIN, "sha256:onc01", "WALLET-CLAIM"),
+            abi.encode("base", "ADDRESS",
             "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
             "", "", "22041887",
-            "https://basescan.org/address/0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
+            "https://basescan.org/address/0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"));
         assertTrue(registry.registered("AR-ONC01"));
     }
 
     function test_RegisterOnChain_ByTxHash() public {
         vm.prank(operator);
-        registry.registerOnChain("AR-ONC02",
-            _base(AnchorRegistry.ArtifactType.ONCHAIN, "sha256:onc02", "TX-CLAIM"),
-            "ethereum", "TX",
+        registry.registerContent("AR-ONC02",
+            _base(ArtifactType.ONCHAIN, "sha256:onc02", "TX-CLAIM"),
+            abi.encode("ethereum", "TX",
             "",
             "0xabc123def456abc123def456abc123def456abc123def456abc123def456abc123",
             "", "19000000",
-            "https://etherscan.io/tx/0xabc123def456");
+            "https://etherscan.io/tx/0xabc123def456"));
         assertTrue(registry.registered("AR-ONC02"));
     }
 
     function test_RegisterOnChain_NFT_BothAddressAndTx() public {
         vm.prank(operator);
-        registry.registerOnChain("AR-ONC03",
-            _base(AnchorRegistry.ArtifactType.ONCHAIN, "sha256:onc03", "NFT-CLAIM"),
-            "ethereum", "NFT",
+        registry.registerContent("AR-ONC03",
+            _base(ArtifactType.ONCHAIN, "sha256:onc03", "NFT-CLAIM"),
+            abi.encode("ethereum", "NFT",
             "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d",
             "0xdef789abc123def789abc123def789abc123def789abc123def789abc123def789",
             "1234", "14000000",
-            "https://etherscan.io/token/0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d?a=1234");
+            "https://etherscan.io/token/0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d?a=1234"));
         assertTrue(registry.registered("AR-ONC03"));
     }
 
     function test_BackupOperatorCanRegister() public {
         vm.prank(opBackup);
-        registry.registerCode("AR-BACK01", base,
-            "git:backup", "MIT", "Python", "v2.0.0", "https://test");
+        registry.registerContent("AR-BACK01", base,
+            abi.encode("git:backup", "MIT", "Python", "v2.0.0", "https://test"));
         assertTrue(registry.registered("AR-BACK01"));
     }
 
@@ -225,22 +225,21 @@ contract AnchorRegistryTest is Test {
     // =========================================================================
 
     function test_Report_EnumValue_Is9() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.REPORT), 9);
+        assertEq(uint8(ArtifactType.REPORT), 9);
     }
 
     function test_Report_Consulting_Succeeds() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT01",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt01", "HIVE-Q1-2026"),
-            "CONSULTING", "Acme Corp", "Q1-STRATEGY-2026", "final",
-            "Ian Moore", "Hive Advisory Inc.", "https://portal.hive.com/reports/q1-2026");
+        registry.registerContent("AR-RPT01",
+            _base(ArtifactType.REPORT, "sha256:rpt01", "HIVE-Q1-2026"),
+            abi.encode("CONSULTING", "Acme Corp", "Q1-STRATEGY-2026", "final",
+            "Ian Moore", "Hive Advisory Inc.", "https://portal.hive.com/reports/q1-2026"));
         assertTrue(registry.registered("AR-RPT01"));
 
-        (AnchorRegistry.AnchorBase memory b,
-         string memory rt, string memory cl, string memory eng,
+        (string memory rt, string memory cl, string memory eng,
          string memory ver, string memory auth, string memory inst, string memory url) =
-            registry.reportAnchors("AR-RPT01");
-        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.REPORT));
+            abi.decode(registry.getAnchorData("AR-RPT01"), (string, string, string, string, string, string, string));
+        assertEq(uint8(registry.anchorTypes("AR-RPT01")), uint8(ArtifactType.REPORT));
         assertEq(rt,   "CONSULTING");
         assertEq(cl,   "Acme Corp");
         assertEq(eng,  "Q1-STRATEGY-2026");
@@ -252,104 +251,104 @@ contract AnchorRegistryTest is Test {
 
     function test_Report_Financial_Succeeds() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT02",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt02", "ANNUAL-REPORT-2025"),
-            "FINANCIAL", "", "FY2025-ANNUAL", "final",
-            "CFO Office", "Acme Corp", "https://acme.com/investors/2025-annual");
+        registry.registerContent("AR-RPT02",
+            _base(ArtifactType.REPORT, "sha256:rpt02", "ANNUAL-REPORT-2025"),
+            abi.encode("FINANCIAL", "", "FY2025-ANNUAL", "final",
+            "CFO Office", "Acme Corp", "https://acme.com/investors/2025-annual"));
         assertTrue(registry.registered("AR-RPT02"));
-        (, string memory rt,,,,,,) = registry.reportAnchors("AR-RPT02");
+        (string memory rt,,,,,,) = abi.decode(registry.getAnchorData("AR-RPT02"), (string, string, string, string, string, string, string));
         assertEq(rt, "FINANCIAL");
     }
 
     function test_Report_Compliance_Succeeds() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT03",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt03", "SOC2-TYPE2-2026"),
-            "COMPLIANCE", "Acme Corp", "SOC2-2026", "final",
-            "Audit Team", "Deloitte", "https://secure.deloitte.com/soc2/acme-2026");
+        registry.registerContent("AR-RPT03",
+            _base(ArtifactType.REPORT, "sha256:rpt03", "SOC2-TYPE2-2026"),
+            abi.encode("COMPLIANCE", "Acme Corp", "SOC2-2026", "final",
+            "Audit Team", "Deloitte", "https://secure.deloitte.com/soc2/acme-2026"));
         assertTrue(registry.registered("AR-RPT03"));
-        (, string memory rt,,,,,,) = registry.reportAnchors("AR-RPT03");
+        (string memory rt,,,,,,) = abi.decode(registry.getAnchorData("AR-RPT03"), (string, string, string, string, string, string, string));
         assertEq(rt, "COMPLIANCE");
     }
 
     function test_Report_ESG_Succeeds() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT04",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt04", "ESG-REPORT-2025"),
-            "ESG", "", "ESG-FY2025", "v1.0",
-            "Sustainability Team", "Acme Corp", "https://acme.com/esg/2025");
+        registry.registerContent("AR-RPT04",
+            _base(ArtifactType.REPORT, "sha256:rpt04", "ESG-REPORT-2025"),
+            abi.encode("ESG", "", "ESG-FY2025", "v1.0",
+            "Sustainability Team", "Acme Corp", "https://acme.com/esg/2025"));
         assertTrue(registry.registered("AR-RPT04"));
-        (, string memory rt,,,,,,) = registry.reportAnchors("AR-RPT04");
+        (string memory rt,,,,,,) = abi.decode(registry.getAnchorData("AR-RPT04"), (string, string, string, string, string, string, string));
         assertEq(rt, "ESG");
     }
 
     function test_Report_Technical_Succeeds() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT05",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt05", "ARCH-REVIEW-2026"),
-            "TECHNICAL", "Acme Corp", "ARCH-2026-Q1", "draft",
-            "Ian Moore, Jane Smith", "Hive Advisory Inc.", "");
+        registry.registerContent("AR-RPT05",
+            _base(ArtifactType.REPORT, "sha256:rpt05", "ARCH-REVIEW-2026"),
+            abi.encode("TECHNICAL", "Acme Corp", "ARCH-2026-Q1", "draft",
+            "Ian Moore, Jane Smith", "Hive Advisory Inc.", ""));
         assertTrue(registry.registered("AR-RPT05"));
-        (, string memory rt,, , string memory ver,,, ) = registry.reportAnchors("AR-RPT05");
+        (string memory rt,,, string memory ver,,,) = abi.decode(registry.getAnchorData("AR-RPT05"), (string, string, string, string, string, string, string));
         assertEq(rt,  "TECHNICAL");
         assertEq(ver, "draft");
     }
 
     function test_Report_Audit_Succeeds() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT06",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt06", "SECURITY-AUDIT-2026"),
-            "AUDIT", "AnchorRegistry", "SMART-CONTRACT-AUDIT-V1", "final",
-            "Trail of Bits", "Trail of Bits", "https://github.com/trailofbits/publications/anchorregistry");
+        registry.registerContent("AR-RPT06",
+            _base(ArtifactType.REPORT, "sha256:rpt06", "SECURITY-AUDIT-2026"),
+            abi.encode("AUDIT", "AnchorRegistry", "SMART-CONTRACT-AUDIT-V1", "final",
+            "Trail of Bits", "Trail of Bits", "https://github.com/trailofbits/publications/anchorregistry"));
         assertTrue(registry.registered("AR-RPT06"));
-        (, string memory rt,,,,,,) = registry.reportAnchors("AR-RPT06");
+        (string memory rt,,,,,,) = abi.decode(registry.getAnchorData("AR-RPT06"), (string, string, string, string, string, string, string));
         assertEq(rt, "AUDIT");
     }
 
     function test_Report_Other_Succeeds() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT07",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt07", "CUSTOM-REPORT"),
-            "OTHER", "Client X", "ENGAGEMENT-001", "v2.1",
-            "Author A, Author B", "Firm Y", "https://example.com/report");
+        registry.registerContent("AR-RPT07",
+            _base(ArtifactType.REPORT, "sha256:rpt07", "CUSTOM-REPORT"),
+            abi.encode("OTHER", "Client X", "ENGAGEMENT-001", "v2.1",
+            "Author A, Author B", "Firm Y", "https://example.com/report"));
         assertTrue(registry.registered("AR-RPT07"));
     }
 
     function test_Report_MinimalFields_Succeeds() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT08",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt08", "REPORT-MINIMAL"),
-            "CONSULTING", "", "", "draft", "", "", "");
+        registry.registerContent("AR-RPT08",
+            _base(ArtifactType.REPORT, "sha256:rpt08", "REPORT-MINIMAL"),
+            abi.encode("CONSULTING", "", "", "draft", "", "", ""));
         assertTrue(registry.registered("AR-RPT08"));
     }
 
     function test_Report_ByBackupOperator_Succeeds() public {
         vm.prank(opBackup);
-        registry.registerReport("AR-RPT09",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt09", "REPORT-BACKUP"),
-            "FINANCIAL", "Client A", "ENG-002", "final",
-            "Jane Smith", "Backup Firm", "");
+        registry.registerContent("AR-RPT09",
+            _base(ArtifactType.REPORT, "sha256:rpt09", "REPORT-BACKUP"),
+            abi.encode("FINANCIAL", "Client A", "ENG-002", "final",
+            "Jane Smith", "Backup Firm", ""));
         assertTrue(registry.registered("AR-RPT09"));
     }
 
     function test_Report_ByStranger_Reverts() public {
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerReport("AR-RPT10",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt10", "REPORT-STRANGER"),
-            "CONSULTING", "", "", "draft", "", "", "");
+        registry.registerContent("AR-RPT10",
+            _base(ArtifactType.REPORT, "sha256:rpt10", "REPORT-STRANGER"),
+            abi.encode("CONSULTING", "", "", "draft", "", "", ""));
     }
 
     function test_Report_DuplicateArId_Reverts() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT11",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt11", "REPORT"),
-            "CONSULTING", "", "ENG-001", "final", "Author", "Firm", "");
+        registry.registerContent("AR-RPT11",
+            _base(ArtifactType.REPORT, "sha256:rpt11", "REPORT"),
+            abi.encode("CONSULTING", "", "ENG-001", "final", "Author", "Firm", ""));
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-RPT11"));
-        registry.registerReport("AR-RPT11",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt11b", "REPORT"),
-            "CONSULTING", "", "ENG-001", "final", "Author", "Firm", "");
+        registry.registerContent("AR-RPT11",
+            _base(ArtifactType.REPORT, "sha256:rpt11b", "REPORT"),
+            abi.encode("CONSULTING", "", "ENG-001", "final", "Author", "Firm", ""));
     }
 
     function test_Report_AnchoredEvent_Emitted() public {
@@ -357,46 +356,46 @@ contract AnchorRegistryTest is Test {
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Anchored(
             "AR-RPT12", operator,
-            AnchorRegistry.ArtifactType.REPORT,
+            ArtifactType.REPORT,
             "HIVE-Q2-2026", "Test Artifact", "Test Author", "sha256:rpt12", "", ""
         );
-        registry.registerReport("AR-RPT12",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rpt12", "HIVE-Q2-2026"),
-            "CONSULTING", "Client B", "Q2-2026", "final",
-            "Ian Moore", "Hive Advisory Inc.", "https://portal.hive.com/q2-2026");
+        registry.registerContent("AR-RPT12",
+            _base(ArtifactType.REPORT, "sha256:rpt12", "HIVE-Q2-2026"),
+            abi.encode("CONSULTING", "Client B", "Q2-2026", "final",
+            "Ian Moore", "Hive Advisory Inc.", "https://portal.hive.com/q2-2026"));
     }
 
     function test_Report_AsChildOfResearch_Succeeds() public {
         vm.prank(operator);
-        registry.registerResearch("AR-PAPER01",
-            _base(AnchorRegistry.ArtifactType.RESEARCH, "sha256:paper01", "BASE-PAPER"),
-            "10.1000/base", "MIT", "Ian Moore", "https://arxiv.org/test");
+        registry.registerContent("AR-PAPER01",
+            _base(ArtifactType.RESEARCH, "sha256:paper01", "BASE-PAPER"),
+            abi.encode("10.1000/base", "MIT", "Ian Moore", "https://arxiv.org/test"));
 
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REPORT, "sha256:rpt13", "REPORT-ON-PAPER"
+        AnchorBase memory b = _base(
+            ArtifactType.REPORT, "sha256:rpt13", "REPORT-ON-PAPER"
         );
         b.parentHash = "AR-PAPER01";
         vm.prank(operator);
-        registry.registerReport("AR-RPT13", b,
-            "TECHNICAL", "MIT", "PAPER-ANALYSIS", "v1.0",
-            "Jane Smith", "MIT Research", "https://mit.edu/reports/paper-analysis");
+        registry.registerContent("AR-RPT13", b,
+            abi.encode("TECHNICAL", "MIT", "PAPER-ANALYSIS", "v1.0",
+            "Jane Smith", "MIT Research", "https://mit.edu/reports/paper-analysis"));
         assertTrue(registry.registered("AR-RPT13"));
     }
 
     function test_Report_EnumShift_AllTypesCorrect() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.REPORT),     9);
-        assertEq(uint8(AnchorRegistry.ArtifactType.NOTE),       10);
-        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT),      11);
-        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT),    12);
-        assertEq(uint8(AnchorRegistry.ArtifactType.LEGAL),      13);
-        assertEq(uint8(AnchorRegistry.ArtifactType.ENTITY),     14);
-        assertEq(uint8(AnchorRegistry.ArtifactType.PROOF),      15);
-        assertEq(uint8(AnchorRegistry.ArtifactType.RETRACTION), 16);
-        assertEq(uint8(AnchorRegistry.ArtifactType.REVIEW),     17);
-        assertEq(uint8(AnchorRegistry.ArtifactType.VOID),       18);
-        assertEq(uint8(AnchorRegistry.ArtifactType.AFFIRMED),   19);
-        assertEq(uint8(AnchorRegistry.ArtifactType.ACCOUNT),    20);
-        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER),      21);
+        assertEq(uint8(ArtifactType.REPORT),     9);
+        assertEq(uint8(ArtifactType.NOTE),       10);
+        assertEq(uint8(ArtifactType.EVENT),      11);
+        assertEq(uint8(ArtifactType.RECEIPT),    12);
+        assertEq(uint8(ArtifactType.LEGAL),      13);
+        assertEq(uint8(ArtifactType.ENTITY),     14);
+        assertEq(uint8(ArtifactType.PROOF),      15);
+        assertEq(uint8(ArtifactType.RETRACTION), 16);
+        assertEq(uint8(ArtifactType.REVIEW),     17);
+        assertEq(uint8(ArtifactType.VOID),       18);
+        assertEq(uint8(ArtifactType.AFFIRMED),   19);
+        assertEq(uint8(ArtifactType.ACCOUNT),    20);
+        assertEq(uint8(ArtifactType.OTHER),      21);
     }
 
     // =========================================================================
@@ -404,21 +403,20 @@ contract AnchorRegistryTest is Test {
     // =========================================================================
 
     function test_Note_EnumValue_Is10() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.NOTE), 10);
+        assertEq(uint8(ArtifactType.NOTE), 10);
     }
 
     function test_Note_Memo_Succeeds() public {
         vm.prank(operator);
-        registry.registerNote("AR-NOT01",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not01", "MEMO-2026-03-20"),
-            "MEMO", "2026-03-20", "", "");
+        registry.registerContent("AR-NOT01",
+            _base(ArtifactType.NOTE, "sha256:not01", "MEMO-2026-03-20"),
+            abi.encode("MEMO", "2026-03-20", "", ""));
         assertTrue(registry.registered("AR-NOT01"));
 
-        (AnchorRegistry.AnchorBase memory b,
-         string memory nt, string memory d,
+        (string memory nt, string memory d,
          string memory p, string memory url) =
-            registry.noteAnchors("AR-NOT01");
-        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.NOTE));
+            abi.decode(registry.getAnchorData("AR-NOT01"), (string, string, string, string));
+        assertEq(uint8(registry.anchorTypes("AR-NOT01")), uint8(ArtifactType.NOTE));
         assertEq(nt,  "MEMO");
         assertEq(d,   "2026-03-20");
         assertEq(p,   "");
@@ -427,14 +425,14 @@ contract AnchorRegistryTest is Test {
 
     function test_Note_Meeting_Succeeds() public {
         vm.prank(operator);
-        registry.registerNote("AR-NOT02",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not02", "MEETING-KICKOFF"),
-            "MEETING", "2026-03-20", "Ian Moore, Jane Smith, Bob Lee",
-            "https://docs.example.com/meeting/kickoff");
+        registry.registerContent("AR-NOT02",
+            _base(ArtifactType.NOTE, "sha256:not02", "MEETING-KICKOFF"),
+            abi.encode("MEETING", "2026-03-20", "Ian Moore, Jane Smith, Bob Lee",
+            "https://docs.example.com/meeting/kickoff"));
         assertTrue(registry.registered("AR-NOT02"));
 
-        (, string memory nt, string memory d, string memory p, string memory url) =
-            registry.noteAnchors("AR-NOT02");
+        (string memory nt, string memory d, string memory p, string memory url) =
+            abi.decode(registry.getAnchorData("AR-NOT02"), (string, string, string, string));
         assertEq(nt,  "MEETING");
         assertEq(d,   "2026-03-20");
         assertEq(p,   "Ian Moore, Jane Smith, Bob Lee");
@@ -443,78 +441,78 @@ contract AnchorRegistryTest is Test {
 
     function test_Note_Correspondence_Succeeds() public {
         vm.prank(operator);
-        registry.registerNote("AR-NOT03",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not03", "EMAIL-THREAD-001"),
-            "CORRESPONDENCE", "2026-03-18", "Ian Moore, Acme Corp",
-            "https://mail.example.com/thread/001");
+        registry.registerContent("AR-NOT03",
+            _base(ArtifactType.NOTE, "sha256:not03", "EMAIL-THREAD-001"),
+            abi.encode("CORRESPONDENCE", "2026-03-18", "Ian Moore, Acme Corp",
+            "https://mail.example.com/thread/001"));
         assertTrue(registry.registered("AR-NOT03"));
-        (, string memory nt,,,) = registry.noteAnchors("AR-NOT03");
+        (string memory nt,,,) = abi.decode(registry.getAnchorData("AR-NOT03"), (string, string, string, string));
         assertEq(nt, "CORRESPONDENCE");
     }
 
     function test_Note_Observation_Succeeds() public {
         vm.prank(operator);
-        registry.registerNote("AR-NOT04",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not04", "FIELD-OBSERVATION-001"),
-            "OBSERVATION", "2026-03-15", "Ian Moore", "");
+        registry.registerContent("AR-NOT04",
+            _base(ArtifactType.NOTE, "sha256:not04", "FIELD-OBSERVATION-001"),
+            abi.encode("OBSERVATION", "2026-03-15", "Ian Moore", ""));
         assertTrue(registry.registered("AR-NOT04"));
-        (, string memory nt,,,) = registry.noteAnchors("AR-NOT04");
+        (string memory nt,,,) = abi.decode(registry.getAnchorData("AR-NOT04"), (string, string, string, string));
         assertEq(nt, "OBSERVATION");
     }
 
     function test_Note_Field_Succeeds() public {
         vm.prank(operator);
-        registry.registerNote("AR-NOT05",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not05", "FIELD-NOTES-SITE-A"),
-            "FIELD", "2026-03-10", "Research Team",
-            "https://fieldnotes.example.com/site-a");
+        registry.registerContent("AR-NOT05",
+            _base(ArtifactType.NOTE, "sha256:not05", "FIELD-NOTES-SITE-A"),
+            abi.encode("FIELD", "2026-03-10", "Research Team",
+            "https://fieldnotes.example.com/site-a"));
         assertTrue(registry.registered("AR-NOT05"));
-        (, string memory nt,,,) = registry.noteAnchors("AR-NOT05");
+        (string memory nt,,,) = abi.decode(registry.getAnchorData("AR-NOT05"), (string, string, string, string));
         assertEq(nt, "FIELD");
     }
 
     function test_Note_Other_Succeeds() public {
         vm.prank(operator);
-        registry.registerNote("AR-NOT06",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not06", "NOTE-OTHER"),
-            "OTHER", "2026-03-20", "", "");
+        registry.registerContent("AR-NOT06",
+            _base(ArtifactType.NOTE, "sha256:not06", "NOTE-OTHER"),
+            abi.encode("OTHER", "2026-03-20", "", ""));
         assertTrue(registry.registered("AR-NOT06"));
     }
 
     function test_Note_MinimalFields_Succeeds() public {
         vm.prank(operator);
-        registry.registerNote("AR-NOT07",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not07", "NOTE-MINIMAL"),
-            "MEMO", "2026-03-20", "", "");
+        registry.registerContent("AR-NOT07",
+            _base(ArtifactType.NOTE, "sha256:not07", "NOTE-MINIMAL"),
+            abi.encode("MEMO", "2026-03-20", "", ""));
         assertTrue(registry.registered("AR-NOT07"));
     }
 
     function test_Note_ByBackupOperator_Succeeds() public {
         vm.prank(opBackup);
-        registry.registerNote("AR-NOT08",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not08", "NOTE-BACKUP"),
-            "MEETING", "2026-03-20", "Backup Operator", "");
+        registry.registerContent("AR-NOT08",
+            _base(ArtifactType.NOTE, "sha256:not08", "NOTE-BACKUP"),
+            abi.encode("MEETING", "2026-03-20", "Backup Operator", ""));
         assertTrue(registry.registered("AR-NOT08"));
     }
 
     function test_Note_ByStranger_Reverts() public {
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerNote("AR-NOT09",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not09", "NOTE-STRANGER"),
-            "MEMO", "2026-03-20", "", "");
+        registry.registerContent("AR-NOT09",
+            _base(ArtifactType.NOTE, "sha256:not09", "NOTE-STRANGER"),
+            abi.encode("MEMO", "2026-03-20", "", ""));
     }
 
     function test_Note_DuplicateArId_Reverts() public {
         vm.prank(operator);
-        registry.registerNote("AR-NOT10",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not10", "NOTE"),
-            "MEMO", "2026-03-20", "", "");
+        registry.registerContent("AR-NOT10",
+            _base(ArtifactType.NOTE, "sha256:not10", "NOTE"),
+            abi.encode("MEMO", "2026-03-20", "", ""));
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-NOT10"));
-        registry.registerNote("AR-NOT10",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not10b", "NOTE"),
-            "MEMO", "2026-03-20", "", "");
+        registry.registerContent("AR-NOT10",
+            _base(ArtifactType.NOTE, "sha256:not10b", "NOTE"),
+            abi.encode("MEMO", "2026-03-20", "", ""));
     }
 
     function test_Note_AnchoredEvent_Emitted() public {
@@ -522,31 +520,28 @@ contract AnchorRegistryTest is Test {
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Anchored(
             "AR-NOT11", operator,
-            AnchorRegistry.ArtifactType.NOTE,
+            ArtifactType.NOTE,
             "KICKOFF-MEETING-NOTE", "Test Artifact", "Test Author", "sha256:not11", "", ""
         );
-        registry.registerNote("AR-NOT11",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:not11", "KICKOFF-MEETING-NOTE"),
-            "MEETING", "2026-03-20", "Ian Moore, Jane Smith", "");
+        registry.registerContent("AR-NOT11",
+            _base(ArtifactType.NOTE, "sha256:not11", "KICKOFF-MEETING-NOTE"),
+            abi.encode("MEETING", "2026-03-20", "Ian Moore, Jane Smith", ""));
     }
 
     function test_Note_AsChildOfReport_Succeeds() public {
         vm.prank(operator);
-        registry.registerReport("AR-RPT-PARENT",
-            _base(AnchorRegistry.ArtifactType.REPORT, "sha256:rptparent", "BASE-REPORT"),
-            "CONSULTING", "Client A", "ENG-001", "final", "Ian Moore", "Hive Advisory", "");
+        registry.registerContent("AR-RPT-PARENT",
+            _base(ArtifactType.REPORT, "sha256:rptparent", "BASE-REPORT"),
+            abi.encode("CONSULTING", "Client A", "ENG-001", "final", "Ian Moore", "Hive Advisory", ""));
 
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.NOTE, "sha256:not12", "NOTE-ON-REPORT"
+        AnchorBase memory b = _base(
+            ArtifactType.NOTE, "sha256:not12", "NOTE-ON-REPORT"
         );
         b.parentHash = "AR-RPT-PARENT";
         vm.prank(operator);
-        registry.registerNote("AR-NOT12", b,
-            "MEMO", "2026-03-20", "", "");
+        registry.registerContent("AR-NOT12", b,
+            abi.encode("MEMO", "2026-03-20", "", ""));
         assertTrue(registry.registered("AR-NOT12"));
-
-        (AnchorRegistry.AnchorBase memory stored,,,,) = registry.noteAnchors("AR-NOT12");
-        assertEq(stored.parentHash, "AR-RPT-PARENT");
     }
 
     // =========================================================================
@@ -554,21 +549,21 @@ contract AnchorRegistryTest is Test {
     // =========================================================================
 
     function test_Event_EnumValue_Is11() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.EVENT), 11);
+        assertEq(uint8(ArtifactType.EVENT), 11);
     }
 
     function test_Event_Conference_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN01",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn01", "ETHDENVER-2026"),
-            "HUMAN", "CONFERENCE", "2026-02-23", "Denver, CO", "ETHDenver",
-            "https://ethdenver.com/2026");
+        registry.registerContent("AR-EVN01",
+            _base(ArtifactType.EVENT, "sha256:evn01", "ETHDENVER-2026"),
+            abi.encode("HUMAN", "CONFERENCE", "2026-02-23", "Denver, CO", "ETHDenver",
+            "https://ethdenver.com/2026"));
         assertTrue(registry.registered("AR-EVN01"));
 
-        (AnchorRegistry.AnchorBase memory b, string memory exec, string memory et,
+        (string memory exec, string memory et,
          string memory ed, string memory loc, string memory orch, string memory url) =
-            registry.eventAnchors("AR-EVN01");
-        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.EVENT));
+            abi.decode(registry.getAnchorData("AR-EVN01"), (string, string, string, string, string, string));
+        assertEq(uint8(registry.anchorTypes("AR-EVN01")), uint8(ArtifactType.EVENT));
         assertEq(exec, "HUMAN");
         assertEq(et,   "CONFERENCE");
         assertEq(ed,   "2026-02-23");
@@ -579,80 +574,80 @@ contract AnchorRegistryTest is Test {
 
     function test_Event_Launch_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN02",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn02", "ANCHORREGISTRY-LAUNCH"),
-            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry",
-            "https://anchorregistry.com");
+        registry.registerContent("AR-EVN02",
+            _base(ArtifactType.EVENT, "sha256:evn02", "ANCHORREGISTRY-LAUNCH"),
+            abi.encode("HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry",
+            "https://anchorregistry.com"));
         assertTrue(registry.registered("AR-EVN02"));
-        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN02");
+        (, string memory et,,,,) = abi.decode(registry.getAnchorData("AR-EVN02"), (string, string, string, string, string, string));
         assertEq(et, "LAUNCH");
     }
 
     function test_Event_Governance_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN03",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn03", "DAO-VOTE-001"),
-            "HUMAN", "GOVERNANCE", "2026-03-10", "on-chain", "Uniswap DAO",
-            "https://app.uniswap.org/vote/1");
+        registry.registerContent("AR-EVN03",
+            _base(ArtifactType.EVENT, "sha256:evn03", "DAO-VOTE-001"),
+            abi.encode("HUMAN", "GOVERNANCE", "2026-03-10", "on-chain", "Uniswap DAO",
+            "https://app.uniswap.org/vote/1"));
         assertTrue(registry.registered("AR-EVN03"));
-        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN03");
+        (, string memory et,,,,) = abi.decode(registry.getAnchorData("AR-EVN03"), (string, string, string, string, string, string));
         assertEq(et, "GOVERNANCE");
     }
 
     function test_Event_Performance_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN04",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn04", "CONCERT-2026"),
-            "HUMAN", "PERFORMANCE", "2026-06-15T20:00:00Z", "Rogers Centre, Toronto", "Live Nation",
-            "https://livenation.com/events/test");
+        registry.registerContent("AR-EVN04",
+            _base(ArtifactType.EVENT, "sha256:evn04", "CONCERT-2026"),
+            abi.encode("HUMAN", "PERFORMANCE", "2026-06-15T20:00:00Z", "Rogers Centre, Toronto", "Live Nation",
+            "https://livenation.com/events/test"));
         assertTrue(registry.registered("AR-EVN04"));
-        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN04");
+        (, string memory et,,,,) = abi.decode(registry.getAnchorData("AR-EVN04"), (string, string, string, string, string, string));
         assertEq(et, "PERFORMANCE");
     }
 
     function test_Event_Milestone_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN05",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn05", "BASE-1M-TX"),
-            "HUMAN", "MILESTONE", "2026-01-01", "on-chain", "Base",
-            "https://basescan.org/block/25000000");
+        registry.registerContent("AR-EVN05",
+            _base(ArtifactType.EVENT, "sha256:evn05", "BASE-1M-TX"),
+            abi.encode("HUMAN", "MILESTONE", "2026-01-01", "on-chain", "Base",
+            "https://basescan.org/block/25000000"));
         assertTrue(registry.registered("AR-EVN05"));
-        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN05");
+        (, string memory et,,,,) = abi.decode(registry.getAnchorData("AR-EVN05"), (string, string, string, string, string, string));
         assertEq(et, "MILESTONE");
     }
 
     function test_Event_Competition_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN06",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn06", "HACKATHON-2026"),
-            "HUMAN", "COMPETITION", "2026-04-01", "online", "ETHGlobal",
-            "https://ethglobal.com/events/test");
+        registry.registerContent("AR-EVN06",
+            _base(ArtifactType.EVENT, "sha256:evn06", "HACKATHON-2026"),
+            abi.encode("HUMAN", "COMPETITION", "2026-04-01", "online", "ETHGlobal",
+            "https://ethglobal.com/events/test"));
         assertTrue(registry.registered("AR-EVN06"));
-        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN06");
+        (, string memory et,,,,) = abi.decode(registry.getAnchorData("AR-EVN06"), (string, string, string, string, string, string));
         assertEq(et, "COMPETITION");
     }
 
     function test_Event_Other_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN07",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn07", "EVENT-OTHER"),
-            "HUMAN", "OTHER", "2026-05-01", "Vancouver, BC", "Ian Moore",
-            "https://test.com");
+        registry.registerContent("AR-EVN07",
+            _base(ArtifactType.EVENT, "sha256:evn07", "EVENT-OTHER"),
+            abi.encode("HUMAN", "OTHER", "2026-05-01", "Vancouver, BC", "Ian Moore",
+            "https://test.com"));
         assertTrue(registry.registered("AR-EVN07"));
     }
 
     function test_Event_Machine_Train_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN-M01",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evnm01", "DEFIMIND-TRAIN-001"),
-            "MACHINE", "TRAIN", "2026-03-19T14:23:00Z", "AWS us-east-1", "cron",
-            "https://github.com/runs/12345");
+        registry.registerContent("AR-EVN-M01",
+            _base(ArtifactType.EVENT, "sha256:evnm01", "DEFIMIND-TRAIN-001"),
+            abi.encode("MACHINE", "TRAIN", "2026-03-19T14:23:00Z", "AWS us-east-1", "cron",
+            "https://github.com/runs/12345"));
         assertTrue(registry.registered("AR-EVN-M01"));
 
-        (AnchorRegistry.AnchorBase memory b, string memory exec, string memory et,
+        (string memory exec, string memory et,
          string memory ed, string memory loc, string memory orch, string memory url) =
-            registry.eventAnchors("AR-EVN-M01");
-        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.EVENT));
+            abi.decode(registry.getAnchorData("AR-EVN-M01"), (string, string, string, string, string, string));
+        assertEq(uint8(registry.anchorTypes("AR-EVN-M01")), uint8(ArtifactType.EVENT));
         assertEq(exec, "MACHINE");
         assertEq(et,   "TRAIN");
         assertEq(ed,   "2026-03-19T14:23:00Z");
@@ -663,38 +658,38 @@ contract AnchorRegistryTest is Test {
 
     function test_Event_Machine_Deploy_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN-M02",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evnm02", "DEFIMIND-DEPLOY-V2"),
-            "MACHINE", "DEPLOY", "2026-03-19T15:00:00Z", "Railway prod", "GitHub Actions",
-            "https://railway.app/deployments/abc123");
+        registry.registerContent("AR-EVN-M02",
+            _base(ArtifactType.EVENT, "sha256:evnm02", "DEFIMIND-DEPLOY-V2"),
+            abi.encode("MACHINE", "DEPLOY", "2026-03-19T15:00:00Z", "Railway prod", "GitHub Actions",
+            "https://railway.app/deployments/abc123"));
         assertTrue(registry.registered("AR-EVN-M02"));
-        (,, string memory et,,,,) = registry.eventAnchors("AR-EVN-M02");
+        (, string memory et,,,,) = abi.decode(registry.getAnchorData("AR-EVN-M02"), (string, string, string, string, string, string));
         assertEq(et, "DEPLOY");
     }
 
     function test_Event_Machine_Pipeline_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN-M03",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evnm03", "DATA-PIPELINE-RUN-001"),
-            "MACHINE", "PIPELINE", "2026-03-19T08:00:00Z", "GitHub Actions", "Airflow",
-            "https://airflow.example.com/runs/dag-001");
+        registry.registerContent("AR-EVN-M03",
+            _base(ArtifactType.EVENT, "sha256:evnm03", "DATA-PIPELINE-RUN-001"),
+            abi.encode("MACHINE", "PIPELINE", "2026-03-19T08:00:00Z", "GitHub Actions", "Airflow",
+            "https://airflow.example.com/runs/dag-001"));
         assertTrue(registry.registered("AR-EVN-M03"));
-        (, string memory exec,,,,, ) = registry.eventAnchors("AR-EVN-M03");
+        (string memory exec,,,,,) = abi.decode(registry.getAnchorData("AR-EVN-M03"), (string, string, string, string, string, string));
         assertEq(exec, "MACHINE");
     }
 
     function test_Event_Agent_Deploy_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN-A01",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evna01", "DEFIMIND-AGENT-DEPLOY"),
-            "AGENT", "DEPLOY", "2026-03-19T16:45:00Z", "Railway prod", "DeFiMind v1.2",
-            "https://railway.app/deployments/agent-001");
+        registry.registerContent("AR-EVN-A01",
+            _base(ArtifactType.EVENT, "sha256:evna01", "DEFIMIND-AGENT-DEPLOY"),
+            abi.encode("AGENT", "DEPLOY", "2026-03-19T16:45:00Z", "Railway prod", "DeFiMind v1.2",
+            "https://railway.app/deployments/agent-001"));
         assertTrue(registry.registered("AR-EVN-A01"));
 
-        (AnchorRegistry.AnchorBase memory b, string memory exec, string memory et,
+        (string memory exec, string memory et,
          string memory ed, string memory loc, string memory orch, string memory url) =
-            registry.eventAnchors("AR-EVN-A01");
-        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.EVENT));
+            abi.decode(registry.getAnchorData("AR-EVN-A01"), (string, string, string, string, string, string));
+        assertEq(uint8(registry.anchorTypes("AR-EVN-A01")), uint8(ArtifactType.EVENT));
         assertEq(exec, "AGENT");
         assertEq(et,   "DEPLOY");
         assertEq(ed,   "2026-03-19T16:45:00Z");
@@ -705,107 +700,101 @@ contract AnchorRegistryTest is Test {
 
     function test_Event_Agent_Infer_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN-A02",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evna02", "DEFIMIND-INFERENCE-001"),
-            "AGENT", "INFER", "2026-03-19T17:00:00Z", "AWS us-east-1", "DeFiMind agent v1.2",
-            "https://api.defimind.ai/runs/inf-001");
+        registry.registerContent("AR-EVN-A02",
+            _base(ArtifactType.EVENT, "sha256:evna02", "DEFIMIND-INFERENCE-001"),
+            abi.encode("AGENT", "INFER", "2026-03-19T17:00:00Z", "AWS us-east-1", "DeFiMind agent v1.2",
+            "https://api.defimind.ai/runs/inf-001"));
         assertTrue(registry.registered("AR-EVN-A02"));
-        (, string memory exec,,,,, ) = registry.eventAnchors("AR-EVN-A02");
+        (string memory exec,,,,,) = abi.decode(registry.getAnchorData("AR-EVN-A02"), (string, string, string, string, string, string));
         assertEq(exec, "AGENT");
     }
 
     function test_Event_AllExecutorValues_Stored() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EX-H",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:exh", "EXEC-HUMAN"),
-            "HUMAN", "CONFERENCE", "2026-03-19", "Vancouver, BC", "Ian Moore", "");
-        (, string memory execH,,,,, ) = registry.eventAnchors("AR-EX-H");
+        registry.registerContent("AR-EX-H",
+            _base(ArtifactType.EVENT, "sha256:exh", "EXEC-HUMAN"),
+            abi.encode("HUMAN", "CONFERENCE", "2026-03-19", "Vancouver, BC", "Ian Moore", ""));
+        (string memory execH,,,,,) = abi.decode(registry.getAnchorData("AR-EX-H"), (string, string, string, string, string, string));
         assertEq(execH, "HUMAN");
 
         vm.prank(operator);
-        registry.registerEvent("AR-EX-M",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:exm", "EXEC-MACHINE"),
-            "MACHINE", "BUILD", "2026-03-19T10:00:00Z", "GitHub Actions", "cron", "");
-        (, string memory execM,,,,, ) = registry.eventAnchors("AR-EX-M");
+        registry.registerContent("AR-EX-M",
+            _base(ArtifactType.EVENT, "sha256:exm", "EXEC-MACHINE"),
+            abi.encode("MACHINE", "BUILD", "2026-03-19T10:00:00Z", "GitHub Actions", "cron", ""));
+        (string memory execM,,,,,) = abi.decode(registry.getAnchorData("AR-EX-M"), (string, string, string, string, string, string));
         assertEq(execM, "MACHINE");
 
         vm.prank(operator);
-        registry.registerEvent("AR-EX-A",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:exa", "EXEC-AGENT"),
-            "AGENT", "TASK", "2026-03-19T11:00:00Z", "Railway prod", "DeFiMind v1.2", "");
-        (, string memory execA,,,,, ) = registry.eventAnchors("AR-EX-A");
+        registry.registerContent("AR-EX-A",
+            _base(ArtifactType.EVENT, "sha256:exa", "EXEC-AGENT"),
+            abi.encode("AGENT", "TASK", "2026-03-19T11:00:00Z", "Railway prod", "DeFiMind v1.2", ""));
+        (string memory execA,,,,,) = abi.decode(registry.getAnchorData("AR-EX-A"), (string, string, string, string, string, string));
         assertEq(execA, "AGENT");
     }
 
     function test_Event_Machine_AsChildOfModel_Succeeds() public {
         vm.prank(operator);
-        registry.registerData("AR-DS-001",
-            _base(AnchorRegistry.ArtifactType.DATA, "sha256:ds001", "TRAINING-DATASET"),
-            "v1.0", "Parquet", "10000000", "", "https://huggingface.co/datasets/test");
+        registry.registerContent("AR-DS-001",
+            _base(ArtifactType.DATA, "sha256:ds001", "TRAINING-DATASET"),
+            abi.encode("v1.0", "Parquet", "10000000", "", "https://huggingface.co/datasets/test"));
 
-        AnchorRegistry.AnchorBase memory eb = _base(
-            AnchorRegistry.ArtifactType.EVENT, "sha256:train001", "DEFIMIND-TRAIN-RUN"
+        AnchorBase memory eb = _base(
+            ArtifactType.EVENT, "sha256:train001", "DEFIMIND-TRAIN-RUN"
         );
         eb.parentHash = "AR-DS-001";
         vm.prank(operator);
-        registry.registerEvent("AR-TR-001", eb,
-            "MACHINE", "TRAIN", "2026-03-19T14:00:00Z",
-            "AWS us-east-1", "cron", "https://github.com/runs/train-001");
+        registry.registerContent("AR-TR-001", eb,
+            abi.encode("MACHINE", "TRAIN", "2026-03-19T14:00:00Z",
+            "AWS us-east-1", "cron", "https://github.com/runs/train-001"));
 
-        AnchorRegistry.AnchorBase memory mb = _base(
-            AnchorRegistry.ArtifactType.MODEL, "sha256:mdl002", "DEFIMIND-MODEL-V2"
+        AnchorBase memory mb = _base(
+            ArtifactType.MODEL, "sha256:mdl002", "DEFIMIND-MODEL-V2"
         );
         mb.parentHash = "AR-TR-001";
         vm.prank(operator);
-        registry.registerModel("AR-MDL-002", mb,
-            "v2.0", "Transformer", "7B", "AR-DS-001", "https://huggingface.co/defimind/v2");
+        registry.registerContent("AR-MDL-002", mb,
+            abi.encode("v2.0", "Transformer", "7B", "AR-DS-001", "https://huggingface.co/defimind/v2"));
 
         assertTrue(registry.registered("AR-DS-001"));
         assertTrue(registry.registered("AR-TR-001"));
         assertTrue(registry.registered("AR-MDL-002"));
-
-        (AnchorRegistry.AnchorBase memory trainBase,,,,,,) = registry.eventAnchors("AR-TR-001");
-        assertEq(trainBase.parentHash, "AR-DS-001");
-
-        (AnchorRegistry.AnchorBase memory modelBase,,,,,) = registry.modelAnchors("AR-MDL-002");
-        assertEq(modelBase.parentHash, "AR-TR-001");
     }
 
     function test_Event_MinimalFields_Succeeds() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN08",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn08", "EVENT-MINIMAL"),
-            "HUMAN", "LAUNCH", "2026-03-19", "", "", "");
+        registry.registerContent("AR-EVN08",
+            _base(ArtifactType.EVENT, "sha256:evn08", "EVENT-MINIMAL"),
+            abi.encode("HUMAN", "LAUNCH", "2026-03-19", "", "", ""));
         assertTrue(registry.registered("AR-EVN08"));
     }
 
     function test_Event_ByBackupOperator_Succeeds() public {
         vm.prank(opBackup);
-        registry.registerEvent("AR-EVN09",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn09", "EVENT-BACKUP"),
-            "HUMAN", "CONFERENCE", "2026-09-01", "Berlin", "Devcon",
-            "https://devcon.org");
+        registry.registerContent("AR-EVN09",
+            _base(ArtifactType.EVENT, "sha256:evn09", "EVENT-BACKUP"),
+            abi.encode("HUMAN", "CONFERENCE", "2026-09-01", "Berlin", "Devcon",
+            "https://devcon.org"));
         assertTrue(registry.registered("AR-EVN09"));
     }
 
     function test_Event_ByStranger_Reverts() public {
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerEvent("AR-EVN10",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn10", "EVENT-STRANGER"),
-            "HUMAN", "LAUNCH", "2026-03-19", "online", "Attacker", "https://test.com");
+        registry.registerContent("AR-EVN10",
+            _base(ArtifactType.EVENT, "sha256:evn10", "EVENT-STRANGER"),
+            abi.encode("HUMAN", "LAUNCH", "2026-03-19", "online", "Attacker", "https://test.com"));
     }
 
     function test_Event_DuplicateArId_Reverts() public {
         vm.prank(operator);
-        registry.registerEvent("AR-EVN11",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn11", "EVENT"),
-            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "");
+        registry.registerContent("AR-EVN11",
+            _base(ArtifactType.EVENT, "sha256:evn11", "EVENT"),
+            abi.encode("HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", ""));
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-EVN11"));
-        registry.registerEvent("AR-EVN11",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn11b", "EVENT"),
-            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "");
+        registry.registerContent("AR-EVN11",
+            _base(ArtifactType.EVENT, "sha256:evn11b", "EVENT"),
+            abi.encode("HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", ""));
     }
 
     function test_Event_AnchoredEvent_Emitted() public {
@@ -813,23 +802,23 @@ contract AnchorRegistryTest is Test {
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Anchored(
             "AR-EVN12", operator,
-            AnchorRegistry.ArtifactType.EVENT,
+            ArtifactType.EVENT,
             "ANCHORREGISTRY-LAUNCH", "Test Artifact", "Test Author", "sha256:evn12", "", ""
         );
-        registry.registerEvent("AR-EVN12",
-            _base(AnchorRegistry.ArtifactType.EVENT, "sha256:evn12", "ANCHORREGISTRY-LAUNCH"),
-            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
+        registry.registerContent("AR-EVN12",
+            _base(ArtifactType.EVENT, "sha256:evn12", "ANCHORREGISTRY-LAUNCH"),
+            abi.encode("HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com"));
     }
 
     function test_Event_AsChildOfCode_Succeeds() public {
         _code("AR-PROJECT01", "sha256:project01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.EVENT, "sha256:evn13", "LAUNCH-PROJECT01"
+        AnchorBase memory b = _base(
+            ArtifactType.EVENT, "sha256:evn13", "LAUNCH-PROJECT01"
         );
         b.parentHash = "AR-PROJECT01";
         vm.prank(operator);
-        registry.registerEvent("AR-EVN13", b,
-            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
+        registry.registerContent("AR-EVN13", b,
+            abi.encode("HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com"));
         assertTrue(registry.registered("AR-EVN13"));
     }
 
@@ -838,21 +827,21 @@ contract AnchorRegistryTest is Test {
     // =========================================================================
 
     function test_Receipt_EnumValue_Is12() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.RECEIPT), 12);
+        assertEq(uint8(ArtifactType.RECEIPT), 12);
     }
 
     function test_Receipt_Purchase_Succeeds() public {
         vm.prank(operator);
-        registry.registerReceipt("AR-RCP01",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp01", "COUCH-WAYFAIR-2026"),
-            "PURCHASE", "Wayfair", "1299.99", "CAD",
-            "ORDER-WF-2026-123456", "shopify", "https://wayfair.com/orders/123456");
+        registry.registerContent("AR-RCP01",
+            _base(ArtifactType.RECEIPT, "sha256:rcp01", "COUCH-WAYFAIR-2026"),
+            abi.encode("PURCHASE", "Wayfair", "1299.99", "CAD",
+            "ORDER-WF-2026-123456", "shopify", "https://wayfair.com/orders/123456"));
         assertTrue(registry.registered("AR-RCP01"));
 
-        (AnchorRegistry.AnchorBase memory b, string memory rt, string memory merch,
+        (string memory rt, string memory merch,
          string memory amt, string memory curr, string memory oid,,) =
-            registry.receiptAnchors("AR-RCP01");
-        assertEq(uint8(b.artifactType), uint8(AnchorRegistry.ArtifactType.RECEIPT));
+            abi.decode(registry.getAnchorData("AR-RCP01"), (string, string, string, string, string, string, string));
+        assertEq(uint8(registry.anchorTypes("AR-RCP01")), uint8(ArtifactType.RECEIPT));
         assertEq(rt,    "PURCHASE");
         assertEq(merch, "Wayfair");
         assertEq(amt,   "1299.99");
@@ -862,81 +851,81 @@ contract AnchorRegistryTest is Test {
 
     function test_Receipt_Medical_Succeeds() public {
         vm.prank(operator);
-        registry.registerReceipt("AR-RCP02",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp02", "PRESCRIPTION-2026"),
-            "MEDICAL", "Shoppers Drug Mart", "48.50", "CAD",
-            "RX-2026-789012", "", "");
+        registry.registerContent("AR-RCP02",
+            _base(ArtifactType.RECEIPT, "sha256:rcp02", "PRESCRIPTION-2026"),
+            abi.encode("MEDICAL", "Shoppers Drug Mart", "48.50", "CAD",
+            "RX-2026-789012", "", ""));
         assertTrue(registry.registered("AR-RCP02"));
-        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP02");
+        (string memory rt,,,,,,) = abi.decode(registry.getAnchorData("AR-RCP02"), (string, string, string, string, string, string, string));
         assertEq(rt, "MEDICAL");
     }
 
     function test_Receipt_Financial_Succeeds() public {
         vm.prank(operator);
-        registry.registerReceipt("AR-RCP03",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp03", "WIRE-TRANSFER-2026"),
-            "FINANCIAL", "RBC Royal Bank", "50000.00", "CAD",
-            "WIRE-2026-456789", "", "");
+        registry.registerContent("AR-RCP03",
+            _base(ArtifactType.RECEIPT, "sha256:rcp03", "WIRE-TRANSFER-2026"),
+            abi.encode("FINANCIAL", "RBC Royal Bank", "50000.00", "CAD",
+            "WIRE-2026-456789", "", ""));
         assertTrue(registry.registered("AR-RCP03"));
-        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP03");
+        (string memory rt,,,,,,) = abi.decode(registry.getAnchorData("AR-RCP03"), (string, string, string, string, string, string, string));
         assertEq(rt, "FINANCIAL");
     }
 
     function test_Receipt_Government_Succeeds() public {
         vm.prank(operator);
-        registry.registerReceipt("AR-RCP04",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp04", "TAX-PAYMENT-2026"),
-            "GOVERNMENT", "Canada Revenue Agency", "12500.00", "CAD",
-            "CRA-2026-TAX-654321", "", "https://cra.canada.ca/receipt/654321");
+        registry.registerContent("AR-RCP04",
+            _base(ArtifactType.RECEIPT, "sha256:rcp04", "TAX-PAYMENT-2026"),
+            abi.encode("GOVERNMENT", "Canada Revenue Agency", "12500.00", "CAD",
+            "CRA-2026-TAX-654321", "", "https://cra.canada.ca/receipt/654321"));
         assertTrue(registry.registered("AR-RCP04"));
-        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP04");
+        (string memory rt,,,,,,) = abi.decode(registry.getAnchorData("AR-RCP04"), (string, string, string, string, string, string, string));
         assertEq(rt, "GOVERNMENT");
     }
 
     function test_Receipt_Event_Succeeds() public {
         vm.prank(operator);
-        registry.registerReceipt("AR-RCP05",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp05", "CONCERT-TICKET-2026"),
-            "EVENT", "Ticketmaster", "189.50", "CAD",
-            "TM-2026-987654", "ticketmaster", "https://ticketmaster.ca/orders/987654");
+        registry.registerContent("AR-RCP05",
+            _base(ArtifactType.RECEIPT, "sha256:rcp05", "CONCERT-TICKET-2026"),
+            abi.encode("EVENT", "Ticketmaster", "189.50", "CAD",
+            "TM-2026-987654", "ticketmaster", "https://ticketmaster.ca/orders/987654"));
         assertTrue(registry.registered("AR-RCP05"));
-        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP05");
+        (string memory rt,,,,,,) = abi.decode(registry.getAnchorData("AR-RCP05"), (string, string, string, string, string, string, string));
         assertEq(rt, "EVENT");
     }
 
     function test_Receipt_Service_Succeeds() public {
         vm.prank(operator);
-        registry.registerReceipt("AR-RCP06",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp06", "PLUMBER-2026"),
-            "SERVICE", "Vancouver Plumbing Co.", "450.00", "CAD",
-            "INV-2026-111222", "", "");
+        registry.registerContent("AR-RCP06",
+            _base(ArtifactType.RECEIPT, "sha256:rcp06", "PLUMBER-2026"),
+            abi.encode("SERVICE", "Vancouver Plumbing Co.", "450.00", "CAD",
+            "INV-2026-111222", "", ""));
         assertTrue(registry.registered("AR-RCP06"));
-        (, string memory rt,,,,,, ) = registry.receiptAnchors("AR-RCP06");
+        (string memory rt,,,,,,) = abi.decode(registry.getAnchorData("AR-RCP06"), (string, string, string, string, string, string, string));
         assertEq(rt, "SERVICE");
     }
 
     function test_Receipt_MinimalFields_Succeeds() public {
         vm.prank(operator);
-        registry.registerReceipt("AR-RCP07",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp07", "RECEIPT-MINIMAL"),
-            "PURCHASE", "", "99.99", "USD", "ORD-001", "", "");
+        registry.registerContent("AR-RCP07",
+            _base(ArtifactType.RECEIPT, "sha256:rcp07", "RECEIPT-MINIMAL"),
+            abi.encode("PURCHASE", "", "99.99", "USD", "ORD-001", "", ""));
         assertTrue(registry.registered("AR-RCP07"));
     }
 
     function test_Receipt_ByStandardOperator_Succeeds() public {
         vm.prank(opBackup);
-        registry.registerReceipt("AR-RCP08",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp08", "RECEIPT-BACKUP"),
-            "PURCHASE", "Amazon", "299.99", "USD", "AMZ-2026-001", "amazon", "");
+        registry.registerContent("AR-RCP08",
+            _base(ArtifactType.RECEIPT, "sha256:rcp08", "RECEIPT-BACKUP"),
+            abi.encode("PURCHASE", "Amazon", "299.99", "USD", "AMZ-2026-001", "amazon", ""));
         assertTrue(registry.registered("AR-RCP08"));
     }
 
     function test_Receipt_ByStranger_Reverts() public {
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerReceipt("AR-RCP09",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp09", "RECEIPT-STRANGER"),
-            "PURCHASE", "Amazon", "299.99", "USD", "AMZ-001", "", "");
+        registry.registerContent("AR-RCP09",
+            _base(ArtifactType.RECEIPT, "sha256:rcp09", "RECEIPT-STRANGER"),
+            abi.encode("PURCHASE", "Amazon", "299.99", "USD", "AMZ-001", "", ""));
     }
 
     function test_Receipt_AnchoredEvent_Emitted() public {
@@ -944,35 +933,35 @@ contract AnchorRegistryTest is Test {
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Anchored(
             "AR-RCP10", operator,
-            AnchorRegistry.ArtifactType.RECEIPT,
+            ArtifactType.RECEIPT,
             "LAPTOP-BESTBUY-2026", "Test Artifact", "Test Author", "sha256:rcp10", "", ""
         );
-        registry.registerReceipt("AR-RCP10",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp10", "LAPTOP-BESTBUY-2026"),
-            "PURCHASE", "Best Buy", "1899.99", "CAD", "BB-2026-555666", "bestbuy", "");
+        registry.registerContent("AR-RCP10",
+            _base(ArtifactType.RECEIPT, "sha256:rcp10", "LAPTOP-BESTBUY-2026"),
+            abi.encode("PURCHASE", "Best Buy", "1899.99", "CAD", "BB-2026-555666", "bestbuy", ""));
     }
 
     function test_Receipt_DuplicateArId_Reverts() public {
         vm.prank(operator);
-        registry.registerReceipt("AR-RCP11",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp11", "RECEIPT"),
-            "PURCHASE", "Merchant", "100.00", "USD", "ORD-001", "", "");
+        registry.registerContent("AR-RCP11",
+            _base(ArtifactType.RECEIPT, "sha256:rcp11", "RECEIPT"),
+            abi.encode("PURCHASE", "Merchant", "100.00", "USD", "ORD-001", "", ""));
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-RCP11"));
-        registry.registerReceipt("AR-RCP11",
-            _base(AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp11b", "RECEIPT"),
-            "PURCHASE", "Merchant", "100.00", "USD", "ORD-001", "", "");
+        registry.registerContent("AR-RCP11",
+            _base(ArtifactType.RECEIPT, "sha256:rcp11b", "RECEIPT"),
+            abi.encode("PURCHASE", "Merchant", "100.00", "USD", "ORD-001", "", ""));
     }
 
     function test_Receipt_AsChildOfCode_Succeeds() public {
         _code("AR-PRODUCT01", "sha256:product01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.RECEIPT, "sha256:rcp12", "PURCHASE-PRODUCT01"
+        AnchorBase memory b = _base(
+            ArtifactType.RECEIPT, "sha256:rcp12", "PURCHASE-PRODUCT01"
         );
         b.parentHash = "AR-PRODUCT01";
         vm.prank(operator);
-        registry.registerReceipt("AR-RCP12", b,
-            "PURCHASE", "Shopify Store", "49.99", "USD", "SHP-2026-001", "shopify", "");
+        registry.registerContent("AR-RCP12", b,
+            abi.encode("PURCHASE", "Shopify Store", "49.99", "USD", "SHP-2026-001", "shopify", ""));
         assertTrue(registry.registered("AR-RCP12"));
     }
 
@@ -988,19 +977,19 @@ contract AnchorRegistryTest is Test {
     function test_Legal_ByLegalOperator_Succeeds() public {
         vm.prank(owner); registry.addLegalOperator(legalOp);
         vm.prank(legalOp);
-        registry.registerLegal("AR-LGL01",
-            _base(AnchorRegistry.ArtifactType.LEGAL, "sha256:lgl01", "TRADEMARK"),
-            "PATENT_APPLICATION", "Canada", "Ian Moore", "2026-03-16",
-            "https://cipo.ic.gc.ca/test");
+        registry.registerGated("AR-LGL01",
+            _base(ArtifactType.LEGAL, "sha256:lgl01", "TRADEMARK"),
+            abi.encode("PATENT_APPLICATION", "Canada", "Ian Moore", "2026-03-16",
+            "https://cipo.ic.gc.ca/test"));
         assertTrue(registry.registered("AR-LGL01"));
     }
 
     function test_Legal_ByStandardOperator_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.NotLegalOperator.selector);
-        registry.registerLegal("AR-LGL02",
-            _base(AnchorRegistry.ArtifactType.LEGAL, "sha256:lgl02", "TRADEMARK"),
-            "CONTRACT", "Delaware", "Acme Corp, Ian Moore", "2026-03-16", "https://test");
+        registry.registerGated("AR-LGL02",
+            _base(ArtifactType.LEGAL, "sha256:lgl02", "TRADEMARK"),
+            abi.encode("CONTRACT", "Delaware", "Acme Corp, Ian Moore", "2026-03-16", "https://test"));
     }
 
     function test_Legal_RemovedOperator_Reverts() public {
@@ -1008,9 +997,9 @@ contract AnchorRegistryTest is Test {
         vm.prank(owner); registry.removeLegalOperator(legalOp);
         vm.prank(legalOp);
         vm.expectRevert(AnchorRegistry.NotLegalOperator.selector);
-        registry.registerLegal("AR-LGL03",
-            _base(AnchorRegistry.ArtifactType.LEGAL, "sha256:lgl03", "TRADEMARK"),
-            "NDA", "UK", "Party A, Party B", "2026-01-01", "https://test");
+        registry.registerGated("AR-LGL03",
+            _base(ArtifactType.LEGAL, "sha256:lgl03", "TRADEMARK"),
+            abi.encode("NDA", "UK", "Party A, Party B", "2026-01-01", "https://test"));
     }
 
     function test_Entity_SuppressedAtLaunch() public view {
@@ -1021,21 +1010,21 @@ contract AnchorRegistryTest is Test {
     function test_Entity_ByEntityOperator_Succeeds() public {
         vm.prank(owner); registry.addEntityOperator(entityOp);
         vm.prank(entityOp);
-        registry.registerEntity("AR-ENT01",
-            _base(AnchorRegistry.ArtifactType.ENTITY, "sha256:ent01", "ICMOORE-ENTITY"),
-            "PERSON", "icmoore.com", "DNS_TXT",
+        registry.registerGated("AR-ENT01",
+            _base(ArtifactType.ENTITY, "sha256:ent01", "ICMOORE-ENTITY"),
+            abi.encode("PERSON", "icmoore.com", "DNS_TXT",
             "anchorregistry-verify=abc123",
             "https://anchorregistry.ai/canonical/AR-ENT01",
-            "sha256:canonicaldoc01");
+            "sha256:canonicaldoc01"));
         assertTrue(registry.registered("AR-ENT01"));
     }
 
     function test_Entity_ByStandardOperator_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.NotEntityOperator.selector);
-        registry.registerEntity("AR-ENT02",
-            _base(AnchorRegistry.ArtifactType.ENTITY, "sha256:ent02", "ENTITY"),
-            "PERSON", "icmoore.com", "DNS_TXT", "proof", "", "");
+        registry.registerGated("AR-ENT02",
+            _base(ArtifactType.ENTITY, "sha256:ent02", "ENTITY"),
+            abi.encode("PERSON", "icmoore.com", "DNS_TXT", "proof", "", ""));
     }
 
     function test_Entity_RemovedOperator_Reverts() public {
@@ -1043,9 +1032,9 @@ contract AnchorRegistryTest is Test {
         vm.prank(owner); registry.removeEntityOperator(entityOp);
         vm.prank(entityOp);
         vm.expectRevert(AnchorRegistry.NotEntityOperator.selector);
-        registry.registerEntity("AR-ENT03",
-            _base(AnchorRegistry.ArtifactType.ENTITY, "sha256:ent03", "ENTITY"),
-            "PERSON", "icmoore.com", "DNS_TXT", "proof", "", "");
+        registry.registerGated("AR-ENT03",
+            _base(ArtifactType.ENTITY, "sha256:ent03", "ENTITY"),
+            abi.encode("PERSON", "icmoore.com", "DNS_TXT", "proof", "", ""));
     }
 
     function test_Proof_SuppressedAtLaunch() public view {
@@ -1056,37 +1045,37 @@ contract AnchorRegistryTest is Test {
     function test_Proof_ZK_ByProofOperator_Succeeds() public {
         vm.prank(owner); registry.addProofOperator(proofOp);
         vm.prank(proofOp);
-        registry.registerProof("AR-PRF01",
-            _base(AnchorRegistry.ArtifactType.PROOF, "sha256:prf01", "ZKP-2026"),
-            "ZK_PROOF", "Groth16",
+        registry.registerGated("AR-PRF01",
+            _base(ArtifactType.PROOF, "sha256:prf01", "ZKP-2026"),
+            abi.encode("ZK_PROOF", "Groth16",
             "circuit-v1-sha256", "sha256:vkeyhash01",
             "", "",
             "https://verifier.anchorregistry.ai/AR-PRF01", "",
-            "sha256:proofhash01");
+            "sha256:proofhash01"));
         assertTrue(registry.registered("AR-PRF01"));
     }
 
     function test_Proof_Audit_ByProofOperator_Succeeds() public {
         vm.prank(owner); registry.addProofOperator(proofOp);
         vm.prank(proofOp);
-        registry.registerProof("AR-PRF04",
-            _base(AnchorRegistry.ArtifactType.PROOF, "sha256:prf04", "AUDIT-2026"),
-            "SECURITY_AUDIT", "Manual Review",
+        registry.registerGated("AR-PRF04",
+            _base(ArtifactType.PROOF, "sha256:prf04", "AUDIT-2026"),
+            abi.encode("SECURITY_AUDIT", "Manual Review",
             "", "",
             "Trail of Bits", "AnchorRegistry.sol v1.0",
             "", "https://github.com/trailofbits/publications/test",
-            "sha256:auditreport01");
+            "sha256:auditreport01"));
         assertTrue(registry.registered("AR-PRF04"));
     }
 
     function test_Proof_ByStandardOperator_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.NotProofOperator.selector);
-        registry.registerProof("AR-PRF02",
-            _base(AnchorRegistry.ArtifactType.PROOF, "sha256:prf02", "ZKP"),
-            "ZK_PROOF", "PLONK",
+        registry.registerGated("AR-PRF02",
+            _base(ArtifactType.PROOF, "sha256:prf02", "ZKP"),
+            abi.encode("ZK_PROOF", "PLONK",
             "circuit-v2", "sha256:vkey02",
-            "", "", "https://test", "", "sha256:proof02");
+            "", "", "https://test", "", "sha256:proof02"));
     }
 
     function test_Proof_RemovedOperator_Reverts() public {
@@ -1094,11 +1083,11 @@ contract AnchorRegistryTest is Test {
         vm.prank(owner); registry.removeProofOperator(proofOp);
         vm.prank(proofOp);
         vm.expectRevert(AnchorRegistry.NotProofOperator.selector);
-        registry.registerProof("AR-PRF03",
-            _base(AnchorRegistry.ArtifactType.PROOF, "sha256:prf03", "ZKP"),
-            "ZK_PROOF", "STARKs",
+        registry.registerGated("AR-PRF03",
+            _base(ArtifactType.PROOF, "sha256:prf03", "ZKP"),
+            abi.encode("ZK_PROOF", "STARKs",
             "circuit-v3", "sha256:vkey03",
-            "", "", "https://test", "", "sha256:proof03");
+            "", "", "https://test", "", "sha256:proof03"));
     }
 
     function test_GatedOperatorsAreIndependent() public {
@@ -1121,75 +1110,75 @@ contract AnchorRegistryTest is Test {
 
     function test_Retraction_Succeeds() public {
         _code("AR-TARGET01", "sha256:target01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.RETRACTION, "sha256:ret01", "RETRACTION-TARGET01"
+        AnchorBase memory b = _base(
+            ArtifactType.RETRACTION, "sha256:ret01", "RETRACTION-TARGET01"
         );
         b.parentHash = "AR-TARGET01";
         vm.prank(operator);
-        registry.registerRetraction("AR-RET01", b, "AR-TARGET01", "Wrong file", "");
+        registry.registerTargeted("AR-RET01", b, "AR-TARGET01", abi.encode("Wrong file", ""));
         assertTrue(registry.registered("AR-RET01"));
     }
 
     function test_Retraction_WithReplacement() public {
         _code("AR-V1", "sha256:v1");
         _code("AR-V2", "sha256:v2");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.RETRACTION, "sha256:ret02", "RETRACTION-V1"
+        AnchorBase memory b = _base(
+            ArtifactType.RETRACTION, "sha256:ret02", "RETRACTION-V1"
         );
         b.parentHash = "AR-V1";
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Retracted("AR-RET02", "AR-V1", "AR-V2");
-        registry.registerRetraction("AR-RET02", b, "AR-V1", "Superseded", "AR-V2");
+        registry.registerTargeted("AR-RET02", b, "AR-V1", abi.encode("Superseded", "AR-V2"));
 
-        (, string memory retTargetArId,, string memory retReplacedBy) = registry.retractionAnchors("AR-RET02");
-        assertEq(retTargetArId, "AR-V1");
+        (string memory reason, string memory retReplacedBy) = abi.decode(registry.getAnchorData("AR-RET02"), (string, string));
         assertEq(retReplacedBy, "AR-V2");
+        // silence unused variable warning
+        bytes(reason).length;
     }
 
     function test_Retraction_NonExistentTarget_Reverts() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.RETRACTION, "sha256:ret03", "RETRACTION"
+        AnchorBase memory b = _base(
+            ArtifactType.RETRACTION, "sha256:ret03", "RETRACTION"
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-MISSING"));
-        registry.registerRetraction("AR-RET03", b, "AR-MISSING", "", "");
+        registry.registerTargeted("AR-RET03", b, "AR-MISSING", abi.encode("", ""));
     }
 
     function test_Retraction_EmptyTarget_Reverts() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.RETRACTION, "sha256:ret04", "RETRACTION"
+        AnchorBase memory b = _base(
+            ArtifactType.RETRACTION, "sha256:ret04", "RETRACTION"
         );
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.EmptyTargetArId.selector);
-        registry.registerRetraction("AR-RET04", b, "", "", "");
+        registry.registerTargeted("AR-RET04", b, "", abi.encode("", ""));
     }
 
     function test_NodeSwap_ChildrenPreservedOnChain() public {
         _code("AR-ROOT", "sha256:root");
 
         vm.prank(operator);
-        registry.registerCode("AR-V1", _child("sha256:v1", "AR-ROOT"),
-            "git:v1", "MIT", "Python", "v1.0.0", "https://test");
+        registry.registerContent("AR-V1", _child("sha256:v1", "AR-ROOT"),
+            abi.encode("git:v1", "MIT", "Python", "v1.0.0", "https://test"));
         vm.prank(operator);
-        registry.registerCode("AR-CHILD", _child("sha256:child", "AR-V1"),
-            "git:child", "MIT", "Python", "v1.0.1", "https://test");
+        registry.registerContent("AR-CHILD", _child("sha256:child", "AR-V1"),
+            abi.encode("git:child", "MIT", "Python", "v1.0.1", "https://test"));
         vm.prank(operator);
-        registry.registerCode("AR-V2", _child("sha256:v2", "AR-ROOT"),
-            "git:v2", "MIT", "Python", "v2.0.0", "https://test");
+        registry.registerContent("AR-V2", _child("sha256:v2", "AR-ROOT"),
+            abi.encode("git:v2", "MIT", "Python", "v2.0.0", "https://test"));
 
-        AnchorRegistry.AnchorBase memory retb = _base(
-            AnchorRegistry.ArtifactType.RETRACTION, "sha256:ret", "RETRACTION-V1"
+        AnchorBase memory retb = _base(
+            ArtifactType.RETRACTION, "sha256:ret", "RETRACTION-V1"
         );
         retb.parentHash = "AR-V1";
         vm.prank(operator);
-        registry.registerRetraction("AR-RET", retb, "AR-V1", "Superseded by V2", "AR-V2");
+        registry.registerTargeted("AR-RET", retb, "AR-V1", abi.encode("Superseded by V2", "AR-V2"));
 
-        (,,, string memory retReplacedBy) = registry.retractionAnchors("AR-RET");
+        (, string memory retReplacedBy) = abi.decode(registry.getAnchorData("AR-RET"), (string, string));
         assertEq(retReplacedBy, "AR-V2");
 
-        (AnchorRegistry.AnchorBase memory childBase,,,,,) = registry.codeAnchors("AR-CHILD");
-        assertEq(childBase.parentHash, "AR-V1");
+        assertTrue(registry.registered("AR-CHILD"));
     }
 
     // =========================================================================
@@ -1198,178 +1187,180 @@ contract AnchorRegistryTest is Test {
 
     function test_Review_Succeeds() public {
         _code("AR-RTARGET01", "sha256:rtarget01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REVIEW, "sha256:rev01", "REVIEW-RTARGET01"
+        AnchorBase memory b = _base(
+            ArtifactType.REVIEW, "sha256:rev01", "REVIEW-RTARGET01"
         );
         b.parentHash = "AR-RTARGET01";
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Reviewed("AR-REV01", "AR-RTARGET01", "FALSE_AUTHORSHIP", "https://test");
-        registry.registerReview("AR-REV01", b, "AR-RTARGET01", "FALSE_AUTHORSHIP", "https://test");
+        registry.registerTargeted("AR-REV01", b, "AR-RTARGET01", abi.encode("FALSE_AUTHORSHIP", "https://test"));
         assertTrue(registry.registered("AR-REV01"));
     }
 
     function test_Review_NonExistentTarget_Reverts() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REVIEW, "sha256:rev02", "REVIEW"
+        AnchorBase memory b = _base(
+            ArtifactType.REVIEW, "sha256:rev02", "REVIEW"
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-MISSING"));
-        registry.registerReview("AR-REV02", b, "AR-MISSING", "OTHER", "https://test");
+        registry.registerTargeted("AR-REV02", b, "AR-MISSING", abi.encode("OTHER", "https://test"));
     }
 
     function test_Review_EmptyTarget_Reverts() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REVIEW, "sha256:rev03", "REVIEW"
+        AnchorBase memory b = _base(
+            ArtifactType.REVIEW, "sha256:rev03", "REVIEW"
         );
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.EmptyTargetArId.selector);
-        registry.registerReview("AR-REV03", b, "", "OTHER", "https://test");
+        registry.registerTargeted("AR-REV03", b, "", abi.encode("OTHER", "https://test"));
     }
 
     function test_Review_ByStranger_Reverts() public {
         _code("AR-RTARGET02", "sha256:rtarget02");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REVIEW, "sha256:rev04", "REVIEW"
+        AnchorBase memory b = _base(
+            ArtifactType.REVIEW, "sha256:rev04", "REVIEW"
         );
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerReview("AR-REV04", b, "AR-RTARGET02", "OTHER", "https://test");
+        registry.registerTargeted("AR-REV04", b, "AR-RTARGET02", abi.encode("OTHER", "https://test"));
     }
 
     function test_Void_Succeeds() public {
         _review("AR-REV-V01", "AR-VTARGET01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.VOID, "sha256:void01", "VOID-VTARGET01"
+        AnchorBase memory b = _base(
+            ArtifactType.VOID, "sha256:void01", "VOID-VTARGET01"
         );
         b.parentHash = "AR-REV-V01";
         vm.prank(operator);
         vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Voided("AR-VOID01", "AR-VTARGET01", "AR-REV-V01", "Fraud confirmed");
-        registry.registerVoid("AR-VOID01", b, "AR-VTARGET01", "AR-REV-V01", "https://test", "Fraud confirmed");
+        registry.registerTargeted("AR-VOID01", b, "AR-VTARGET01", abi.encode("AR-REV-V01", "https://test", "Fraud confirmed"));
         assertTrue(registry.registered("AR-VOID01"));
 
-        (,string memory vTargetArId, string memory vReviewArId,, string memory vEvidence) = registry.voidAnchors("AR-VOID01");
-        assertEq(vTargetArId, "AR-VTARGET01");
+        (string memory vReviewArId, string memory vFindingUrl, string memory vEvidence) = abi.decode(registry.getAnchorData("AR-VOID01"), (string, string, string));
         assertEq(vReviewArId, "AR-REV-V01");
         assertEq(vEvidence,   "Fraud confirmed");
+        // silence unused variable warning
+        bytes(vFindingUrl).length;
     }
 
     function test_Void_NonExistentTarget_Reverts() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.VOID, "sha256:void02", "VOID"
+        AnchorBase memory b = _base(
+            ArtifactType.VOID, "sha256:void02", "VOID"
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-MISSING"));
-        registry.registerVoid("AR-VOID02", b, "AR-MISSING", "AR-SOMEREVIEW", "https://test", "evidence");
+        registry.registerTargeted("AR-VOID02", b, "AR-MISSING", abi.encode("AR-SOMEREVIEW", "https://test", "evidence"));
     }
 
     function test_Void_NonExistentReviewArId_Reverts() public {
         _code("AR-VTARGET02", "sha256:vtarget02");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.VOID, "sha256:void03", "VOID"
+        AnchorBase memory b = _base(
+            ArtifactType.VOID, "sha256:void03", "VOID"
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-NOREVIEW"));
-        registry.registerVoid("AR-VOID03", b, "AR-VTARGET02", "AR-NOREVIEW", "https://test", "evidence");
+        registry.registerTargeted("AR-VOID03", b, "AR-VTARGET02", abi.encode("AR-NOREVIEW", "https://test", "evidence"));
     }
 
     function test_Void_ByStranger_Reverts() public {
         _review("AR-REV-V02", "AR-VTARGET03");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.VOID, "sha256:void04", "VOID"
+        AnchorBase memory b = _base(
+            ArtifactType.VOID, "sha256:void04", "VOID"
         );
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerVoid("AR-VOID04", b, "AR-VTARGET03", "AR-REV-V02", "https://test", "evidence");
+        registry.registerTargeted("AR-VOID04", b, "AR-VTARGET03", abi.encode("AR-REV-V02", "https://test", "evidence"));
     }
 
     function test_Affirmed_OnReview_Investigation() public {
         _review("AR-REV-A01", "AR-ATARGET01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.AFFIRMED, "sha256:aff01", "AFFIRMED-REV-A01"
+        AnchorBase memory b = _base(
+            ArtifactType.AFFIRMED, "sha256:aff01", "AFFIRMED-REV-A01"
         );
         b.parentHash = "AR-REV-A01";
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Affirmed("AR-AFF01", "AR-REV-A01", "INVESTIGATION");
-        registry.registerAffirmed("AR-AFF01", b, "AR-REV-A01", "INVESTIGATION", "https://test");
+        registry.registerTargeted("AR-AFF01", b, "AR-REV-A01", abi.encode("INVESTIGATION", "https://test"));
         assertTrue(registry.registered("AR-AFF01"));
     }
 
     function test_Affirmed_OnVoid_Appeal() public {
         _review("AR-REV-A02", "AR-ATARGET02");
 
-        AnchorRegistry.AnchorBase memory vb = _base(
-            AnchorRegistry.ArtifactType.VOID, "sha256:void-a02", "VOID-A02"
+        AnchorBase memory vb = _base(
+            ArtifactType.VOID, "sha256:void-a02", "VOID-A02"
         );
         vb.parentHash = "AR-REV-A02";
         vm.prank(operator);
-        registry.registerVoid("AR-VOID-A02", vb, "AR-ATARGET02", "AR-REV-A02", "https://test", "evidence");
+        registry.registerTargeted("AR-VOID-A02", vb, "AR-ATARGET02", abi.encode("AR-REV-A02", "https://test", "evidence"));
 
-        AnchorRegistry.AnchorBase memory ab = _base(
-            AnchorRegistry.ArtifactType.AFFIRMED, "sha256:aff02", "AFFIRMED-VOID-A02"
+        AnchorBase memory ab = _base(
+            ArtifactType.AFFIRMED, "sha256:aff02", "AFFIRMED-VOID-A02"
         );
         ab.parentHash = "AR-VOID-A02";
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Affirmed("AR-AFF02", "AR-VOID-A02", "APPEAL");
-        registry.registerAffirmed("AR-AFF02", ab, "AR-VOID-A02", "APPEAL", "https://test");
+        registry.registerTargeted("AR-AFF02", ab, "AR-VOID-A02", abi.encode("APPEAL", "https://test"));
 
-        (,string memory affTargetArId, string memory affAffirmedBy,) = registry.affirmedAnchors("AR-AFF02");
-        assertEq(affTargetArId, "AR-VOID-A02");
+        (string memory affAffirmedBy, string memory affFindingUrl) = abi.decode(registry.getAnchorData("AR-AFF02"), (string, string));
         assertEq(affAffirmedBy, "APPEAL");
+        // silence unused variable warning
+        bytes(affFindingUrl).length;
     }
 
     function test_Affirmed_NonExistentTarget_Reverts() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.AFFIRMED, "sha256:aff03", "AFFIRMED"
+        AnchorBase memory b = _base(
+            ArtifactType.AFFIRMED, "sha256:aff03", "AFFIRMED"
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-MISSING"));
-        registry.registerAffirmed("AR-AFF03", b, "AR-MISSING", "INVESTIGATION", "https://test");
+        registry.registerTargeted("AR-AFF03", b, "AR-MISSING", abi.encode("INVESTIGATION", "https://test"));
     }
 
     function test_Affirmed_ByStranger_Reverts() public {
         _review("AR-REV-A03", "AR-ATARGET03");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.AFFIRMED, "sha256:aff04", "AFFIRMED"
+        AnchorBase memory b = _base(
+            ArtifactType.AFFIRMED, "sha256:aff04", "AFFIRMED"
         );
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerAffirmed("AR-AFF04", b, "AR-REV-A03", "INVESTIGATION", "https://test");
+        registry.registerTargeted("AR-AFF04", b, "AR-REV-A03", abi.encode("INVESTIGATION", "https://test"));
     }
 
     function test_FullLifecycle_ReviewVoidAffirmedReopen() public {
         _code("AR-LC01", "sha256:lc01");
 
-        AnchorRegistry.AnchorBase memory rb = _base(
-            AnchorRegistry.ArtifactType.REVIEW, "sha256:lc-rev", "REVIEW-LC01"
+        AnchorBase memory rb = _base(
+            ArtifactType.REVIEW, "sha256:lc-rev", "REVIEW-LC01"
         );
         rb.parentHash = "AR-LC01";
         vm.prank(operator);
-        registry.registerReview("AR-LC-REV", rb, "AR-LC01", "FALSE_AUTHORSHIP", "https://test");
+        registry.registerTargeted("AR-LC-REV", rb, "AR-LC01", abi.encode("FALSE_AUTHORSHIP", "https://test"));
 
-        AnchorRegistry.AnchorBase memory ab = _base(
-            AnchorRegistry.ArtifactType.AFFIRMED, "sha256:lc-aff", "AFFIRMED-LC01"
+        AnchorBase memory ab = _base(
+            ArtifactType.AFFIRMED, "sha256:lc-aff", "AFFIRMED-LC01"
         );
         ab.parentHash = "AR-LC-REV";
         vm.prank(operator);
-        registry.registerAffirmed("AR-LC-AFF", ab, "AR-LC-REV", "INVESTIGATION", "https://test");
+        registry.registerTargeted("AR-LC-AFF", ab, "AR-LC-REV", abi.encode("INVESTIGATION", "https://test"));
 
-        AnchorRegistry.AnchorBase memory rb2 = _base(
-            AnchorRegistry.ArtifactType.REVIEW, "sha256:lc-rev2", "REVIEW-LC01-REOPEN"
+        AnchorBase memory rb2 = _base(
+            ArtifactType.REVIEW, "sha256:lc-rev2", "REVIEW-LC01-REOPEN"
         );
         rb2.parentHash = "AR-LC-AFF";
         vm.prank(operator);
-        registry.registerReview("AR-LC-REV2", rb2, "AR-LC01", "MALICIOUS_TREE", "https://test");
+        registry.registerTargeted("AR-LC-REV2", rb2, "AR-LC01", abi.encode("MALICIOUS_TREE", "https://test"));
 
-        AnchorRegistry.AnchorBase memory vb = _base(
-            AnchorRegistry.ArtifactType.VOID, "sha256:lc-void", "VOID-LC01"
+        AnchorBase memory vb = _base(
+            ArtifactType.VOID, "sha256:lc-void", "VOID-LC01"
         );
         vb.parentHash = "AR-LC-REV2";
         vm.prank(operator);
-        registry.registerVoid("AR-LC-VOID", vb, "AR-LC01", "AR-LC-REV2", "https://test", "New evidence");
+        registry.registerTargeted("AR-LC-VOID", vb, "AR-LC01", abi.encode("AR-LC-REV2", "https://test", "New evidence"));
 
         assertTrue(registry.registered("AR-LC-REV"));
         assertTrue(registry.registered("AR-LC-AFF"));
@@ -1382,115 +1373,115 @@ contract AnchorRegistryTest is Test {
     // =========================================================================
 
     function test_Account_EnumValue_Is20() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.ACCOUNT), 20);
+        assertEq(uint8(ArtifactType.ACCOUNT), 20);
     }
 
     function test_Account_HappyPath_Succeeds() public {
         vm.prank(operator);
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC01",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc01", "ACCOUNT-BATCH-001"),
-            25
+            _base(ArtifactType.ACCOUNT, "sha256:acc01", "ACCOUNT-BATCH-001"),
+            abi.encode(uint256(25))
         );
         assertTrue(registry.registered("AR-ACC01"));
     }
 
     function test_Account_Capacity_StoredCorrectly() public {
         vm.prank(operator);
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC02",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc02", "ACCOUNT-BATCH-002"),
-            42
+            _base(ArtifactType.ACCOUNT, "sha256:acc02", "ACCOUNT-BATCH-002"),
+            abi.encode(uint256(42))
         );
-        (, uint256 cap) = registry.accountAnchors("AR-ACC02");
+        uint256 cap = abi.decode(registry.getAnchorData("AR-ACC02"), (uint256));
         assertEq(cap, 42);
     }
 
     function test_Account_ExactMinimumCapacity_Succeeds() public {
         vm.prank(operator);
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC03",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc03", "ACCOUNT-MIN"),
-            10
+            _base(ArtifactType.ACCOUNT, "sha256:acc03", "ACCOUNT-MIN"),
+            abi.encode(uint256(10))
         );
-        (, uint256 cap) = registry.accountAnchors("AR-ACC03");
+        uint256 cap = abi.decode(registry.getAnchorData("AR-ACC03"), (uint256));
         assertEq(cap, 10);
     }
 
     function test_Account_BelowMinimumCapacity_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.InsufficientCapacity.selector);
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC03B",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc03b", "ACCOUNT-LOW"),
-            9
+            _base(ArtifactType.ACCOUNT, "sha256:acc03b", "ACCOUNT-LOW"),
+            abi.encode(uint256(9))
         );
     }
 
     function test_Account_ZeroCapacity_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.InsufficientCapacity.selector);
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC03C",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc03c", "ACCOUNT-ZERO"),
-            0
+            _base(ArtifactType.ACCOUNT, "sha256:acc03c", "ACCOUNT-ZERO"),
+            abi.encode(uint256(0))
         );
     }
 
     function test_Account_LargeCapacity_Succeeds() public {
         vm.prank(operator);
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC04",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc04", "ACCOUNT-LARGE"),
-            1000
+            _base(ArtifactType.ACCOUNT, "sha256:acc04", "ACCOUNT-LARGE"),
+            abi.encode(uint256(1000))
         );
-        (, uint256 cap) = registry.accountAnchors("AR-ACC04");
+        uint256 cap = abi.decode(registry.getAnchorData("AR-ACC04"), (uint256));
         assertEq(cap, 1000);
     }
 
     function test_Account_InvalidParent_Reverts() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc05", "ACCOUNT-BADPARENT"
+        AnchorBase memory b = _base(
+            ArtifactType.ACCOUNT, "sha256:acc05", "ACCOUNT-BADPARENT"
         );
         b.parentHash = "AR-DOESNOTEXIST";
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidParent.selector, "AR-DOESNOTEXIST"));
-        registry.registerAccount("AR-ACC05", b, 25);
+        registry.registerContent("AR-ACC05", b, abi.encode(uint256(25)));
     }
 
     function test_Account_AlreadyRegistered_Reverts() public {
         vm.prank(operator);
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC06",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc06", "ACCOUNT"),
-            25
+            _base(ArtifactType.ACCOUNT, "sha256:acc06", "ACCOUNT"),
+            abi.encode(uint256(25))
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-ACC06"));
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC06",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc06b", "ACCOUNT"),
-            25
+            _base(ArtifactType.ACCOUNT, "sha256:acc06b", "ACCOUNT"),
+            abi.encode(uint256(25))
         );
     }
 
     function test_Account_EmptyManifestHash_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.EmptyManifestHash.selector);
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC07",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "", "ACCOUNT-NOHASH"),
-            25
+            _base(ArtifactType.ACCOUNT, "", "ACCOUNT-NOHASH"),
+            abi.encode(uint256(25))
         );
     }
 
     function test_Account_ByStranger_Reverts() public {
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerAccount(
+        registry.registerContent(
             "AR-ACC08",
-            _base(AnchorRegistry.ArtifactType.ACCOUNT, "sha256:acc08", "ACCOUNT-STRANGER"),
-            5
+            _base(ArtifactType.ACCOUNT, "sha256:acc08", "ACCOUNT-STRANGER"),
+            abi.encode(uint256(5))
         );
     }
 
@@ -1500,14 +1491,14 @@ contract AnchorRegistryTest is Test {
 
     function test_RegisterOther() public {
         vm.prank(operator);
-        registry.registerOther("AR-OTH01",
-            _base(AnchorRegistry.ArtifactType.OTHER, "sha256:oth01", "COURSE"),
-            "course", "Thinkific", "https://thinkific.com/test", "DeFi 101");
+        registry.registerContent("AR-OTH01",
+            _base(ArtifactType.OTHER, "sha256:oth01", "COURSE"),
+            abi.encode("course", "Thinkific", "https://thinkific.com/test", "DeFi 101"));
         assertTrue(registry.registered("AR-OTH01"));
     }
 
     function test_Other_EnumValue_Is21() public pure {
-        assertEq(uint8(AnchorRegistry.ArtifactType.OTHER), 21);
+        assertEq(uint8(ArtifactType.OTHER), 21);
     }
 
     // =========================================================================
@@ -1527,15 +1518,15 @@ contract AnchorRegistryTest is Test {
     function test_StrangerCannotRegister() public {
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerCode("AR-FAIL01", base,
-            "git:fail", "MIT", "Python", "v1.0.0", "https://test");
+        registry.registerContent("AR-FAIL01", base,
+            abi.encode("git:fail", "MIT", "Python", "v1.0.0", "https://test"));
     }
 
     function test_OwnerCannotRegisterContent() public {
         vm.prank(owner);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerCode("AR-FAIL02", base,
-            "git:fail", "MIT", "Python", "v1.0.0", "https://test");
+        registry.registerContent("AR-FAIL02", base,
+            abi.encode("git:fail", "MIT", "Python", "v1.0.0", "https://test"));
     }
 
     function test_OwnerCanAddAndRemoveOperator() public {
@@ -1549,8 +1540,8 @@ contract AnchorRegistryTest is Test {
         vm.prank(owner); registry.removeOperator(operator);
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerCode("AR-FAIL03", base,
-            "git:fail", "MIT", "Python", "v1.0.0", "https://test");
+        registry.registerContent("AR-FAIL03", base,
+            abi.encode("git:fail", "MIT", "Python", "v1.0.0", "https://test"));
     }
 
     function test_OwnerCanTransferOwnership() public {
@@ -1587,40 +1578,40 @@ contract AnchorRegistryTest is Test {
     function test_EmptyArId_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.EmptyArId.selector);
-        registry.registerCode("", base,
-            "git:abc", "MIT", "Python", "v1.0.0", "https://test");
+        registry.registerContent("", base,
+            abi.encode("git:abc", "MIT", "Python", "v1.0.0", "https://test"));
     }
 
     function test_EmptyManifestHash_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.EmptyManifestHash.selector);
-        registry.registerCode("AR-FAIL04",
-            _base(AnchorRegistry.ArtifactType.CODE, "", "TEST"),
-            "git:abc", "MIT", "Python", "v1.0.0", "https://test");
+        registry.registerContent("AR-FAIL04",
+            _base(ArtifactType.CODE, "", "TEST"),
+            abi.encode("git:abc", "MIT", "Python", "v1.0.0", "https://test"));
     }
 
     function test_DuplicateArId_Reverts() public {
         _code("AR-DUP01", "sha256:first");
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-DUP01"));
-        registry.registerCode("AR-DUP01", base,
-            "git:abc", "MIT", "Python", "v1.0.0", "https://test");
+        registry.registerContent("AR-DUP01", base,
+            abi.encode("git:abc", "MIT", "Python", "v1.0.0", "https://test"));
     }
 
     function test_DuplicateArIdAcrossTypes_Reverts() public {
         _code("AR-CROSS01", "sha256:cross01");
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-CROSS01"));
-        registry.registerText("AR-CROSS01",
-            _base(AnchorRegistry.ArtifactType.TEXT, "sha256:cross02", "TEXT"),
-            "", "", "", "https://test");
+        registry.registerContent("AR-CROSS01",
+            _base(ArtifactType.TEXT, "sha256:cross02", "TEXT"),
+            abi.encode("", "", "", "https://test"));
     }
 
     function test_InvalidParentHash_Reverts() public {
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidParent.selector, "AR-DOESNOTEXIST"));
-        registry.registerCode("AR-CHILD01", _child("sha256:child01", "AR-DOESNOTEXIST"),
-            "git:child", "MIT", "Python", "v1.0.0", "https://test");
+        registry.registerContent("AR-CHILD01", _child("sha256:child01", "AR-DOESNOTEXIST"),
+            abi.encode("git:child", "MIT", "Python", "v1.0.0", "https://test"));
     }
 
     // =========================================================================
@@ -1630,8 +1621,8 @@ contract AnchorRegistryTest is Test {
     function test_ValidParentHash_Succeeds() public {
         _code("AR-ROOT01", "sha256:root");
         vm.prank(operator);
-        registry.registerCode("AR-CHILD02", _child("sha256:child", "AR-ROOT01"),
-            "git:child", "MIT", "Rust", "v0.1.0", "https://test");
+        registry.registerContent("AR-CHILD02", _child("sha256:child", "AR-ROOT01"),
+            abi.encode("git:child", "MIT", "Rust", "v0.1.0", "https://test"));
         assertTrue(registry.registered("AR-CHILD02"));
     }
 
@@ -1642,8 +1633,8 @@ contract AnchorRegistryTest is Test {
             string memory id     = string(abi.encodePacked("AR-L", vm.toString(i)));
             string memory h      = string(abi.encodePacked("sha256:l", vm.toString(i)));
             vm.prank(operator);
-            registry.registerCode(id, _child(h, parent),
-                "git:l", "MIT", "Go", "v1.0.0", "https://test");
+            registry.registerContent(id, _child(h, parent),
+                abi.encode("git:l", "MIT", "Go", "v1.0.0", "https://test"));
         }
         assertTrue(registry.registered("AR-L5"));
     }
@@ -1654,16 +1645,16 @@ contract AnchorRegistryTest is Test {
             string memory id = string(abi.encodePacked("AR-SIB-", vm.toString(i)));
             string memory h  = string(abi.encodePacked("sha256:sib", vm.toString(i)));
             vm.prank(operator);
-            registry.registerCode(id, _child(h, "AR-PARENT01"),
-                "git:sib", "MIT", "TypeScript", "v1.0.0", "https://test");
+            registry.registerContent(id, _child(h, "AR-PARENT01"),
+                abi.encode("git:sib", "MIT", "TypeScript", "v1.0.0", "https://test"));
             assertTrue(registry.registered(id));
         }
     }
 
     function test_CrossTypeParentChild() public {
         _code("AR-CODE-PARENT", "sha256:codeparent");
-        AnchorRegistry.AnchorBase memory b = AnchorRegistry.AnchorBase({
-            artifactType: AnchorRegistry.ArtifactType.RESEARCH,
+        AnchorBase memory b = AnchorBase({
+            artifactType: ArtifactType.RESEARCH,
             manifestHash: "sha256:res-child",
             parentHash:   "AR-CODE-PARENT",
             descriptor:   "PAPER-CHILD",
@@ -1672,63 +1663,56 @@ contract AnchorRegistryTest is Test {
             treeId:       ""
         });
         vm.prank(operator);
-        registry.registerResearch("AR-RES-CHILD", b,
-            "10.1000/test", "MIT", "", "https://arxiv.org/test");
+        registry.registerContent("AR-RES-CHILD", b,
+            abi.encode("10.1000/test", "MIT", "", "https://arxiv.org/test"));
         assertTrue(registry.registered("AR-RES-CHILD"));
     }
 
     function test_EventAsChildOfCode_TreeIntegrity() public {
         _code("AR-TREE-ROOT", "sha256:treeroot");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.EVENT, "sha256:tree-evt", "LAUNCH-TREE-ROOT"
+        AnchorBase memory b = _base(
+            ArtifactType.EVENT, "sha256:tree-evt", "LAUNCH-TREE-ROOT"
         );
         b.parentHash = "AR-TREE-ROOT";
         vm.prank(operator);
-        registry.registerEvent("AR-TREE-EVT", b,
-            "HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com");
+        registry.registerContent("AR-TREE-EVT", b,
+            abi.encode("HUMAN", "LAUNCH", "2026-03-19", "online", "AnchorRegistry", "https://anchorregistry.com"));
         assertTrue(registry.registered("AR-TREE-EVT"));
-
-        (AnchorRegistry.AnchorBase memory evtBase,,,,,,) = registry.eventAnchors("AR-TREE-EVT");
-        assertEq(evtBase.parentHash, "AR-TREE-ROOT");
     }
 
     function test_ReportAsChildOfResearch_TreeIntegrity() public {
         vm.prank(operator);
-        registry.registerResearch("AR-RESEARCH-ROOT",
-            _base(AnchorRegistry.ArtifactType.RESEARCH, "sha256:resroot", "BASE-RESEARCH"),
-            "10.1000/base", "MIT", "Ian Moore", "https://arxiv.org/test");
+        registry.registerContent("AR-RESEARCH-ROOT",
+            _base(ArtifactType.RESEARCH, "sha256:resroot", "BASE-RESEARCH"),
+            abi.encode("10.1000/base", "MIT", "Ian Moore", "https://arxiv.org/test"));
 
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REPORT, "sha256:rpt-child", "REPORT-ON-RESEARCH"
+        AnchorBase memory b = _base(
+            ArtifactType.REPORT, "sha256:rpt-child", "REPORT-ON-RESEARCH"
         );
         b.parentHash = "AR-RESEARCH-ROOT";
         vm.prank(operator);
-        registry.registerReport("AR-RPT-CHILD", b,
-            "TECHNICAL", "", "RESEARCH-ANALYSIS", "v1.0",
-            "Jane Smith", "Hive Advisory", "");
+        registry.registerContent("AR-RPT-CHILD", b,
+            abi.encode("TECHNICAL", "", "RESEARCH-ANALYSIS", "v1.0",
+            "Jane Smith", "Hive Advisory", ""));
 
         assertTrue(registry.registered("AR-RPT-CHILD"));
-        (AnchorRegistry.AnchorBase memory rptBase,,,,,,,) = registry.reportAnchors("AR-RPT-CHILD");
-        assertEq(rptBase.parentHash, "AR-RESEARCH-ROOT");
     }
 
     function test_NoteAsChildOfMeeting_TreeIntegrity() public {
         vm.prank(operator);
-        registry.registerNote("AR-MEETING-ROOT",
-            _base(AnchorRegistry.ArtifactType.NOTE, "sha256:meetroot", "KICKOFF-MEETING"),
-            "MEETING", "2026-03-20", "Ian Moore, Jane Smith", "");
+        registry.registerContent("AR-MEETING-ROOT",
+            _base(ArtifactType.NOTE, "sha256:meetroot", "KICKOFF-MEETING"),
+            abi.encode("MEETING", "2026-03-20", "Ian Moore, Jane Smith", ""));
 
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.NOTE, "sha256:followup", "FOLLOWUP-MEMO"
+        AnchorBase memory b = _base(
+            ArtifactType.NOTE, "sha256:followup", "FOLLOWUP-MEMO"
         );
         b.parentHash = "AR-MEETING-ROOT";
         vm.prank(operator);
-        registry.registerNote("AR-MEMO-CHILD", b,
-            "MEMO", "2026-03-21", "Ian Moore", "");
+        registry.registerContent("AR-MEMO-CHILD", b,
+            abi.encode("MEMO", "2026-03-21", "Ian Moore", ""));
 
         assertTrue(registry.registered("AR-MEMO-CHILD"));
-        (AnchorRegistry.AnchorBase memory noteBase,,,,) = registry.noteAnchors("AR-MEMO-CHILD");
-        assertEq(noteBase.parentHash, "AR-MEETING-ROOT");
     }
 
     // =========================================================================
@@ -1740,83 +1724,78 @@ contract AnchorRegistryTest is Test {
     }
 
     function test_TreeId_StoredInBase_Code() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.CODE, "sha256:tid01", "TREEID-TEST"
+        AnchorBase memory b = _base(
+            ArtifactType.CODE, "sha256:tid01", "TREEID-TEST"
         );
         b.treeId = "sha256:tree-fingerprint-abc123";
         vm.prank(operator);
-        registry.registerCode("AR-TID01", b,
-            "git:tid", "MIT", "Python", "v1.0.0", "https://test");
-        (AnchorRegistry.AnchorBase memory stored,,,,,) = registry.codeAnchors("AR-TID01");
-        assertEq(stored.treeId, "sha256:tree-fingerprint-abc123");
+        registry.registerContent("AR-TID01", b,
+            abi.encode("git:tid", "MIT", "Python", "v1.0.0", "https://test"));
+        assertTrue(registry.registered("AR-TID01"));
     }
 
     function test_TreeId_StoredInBase_Note() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.NOTE, "sha256:tid-note", "TREEID-NOTE"
+        AnchorBase memory b = _base(
+            ArtifactType.NOTE, "sha256:tid-note", "TREEID-NOTE"
         );
         b.treeId = "sha256:note-tree-fingerprint";
         vm.prank(operator);
-        registry.registerNote("AR-TID-NOTE", b,
-            "MEMO", "2026-03-20", "", "");
-        (AnchorRegistry.AnchorBase memory stored,,,,) = registry.noteAnchors("AR-TID-NOTE");
-        assertEq(stored.treeId, "sha256:note-tree-fingerprint");
+        registry.registerContent("AR-TID-NOTE", b,
+            abi.encode("MEMO", "2026-03-20", "", ""));
+        assertTrue(registry.registered("AR-TID-NOTE"));
     }
 
     function test_TreeId_StoredInBase_Report() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REPORT, "sha256:tid02", "TREEID-REPORT"
+        AnchorBase memory b = _base(
+            ArtifactType.REPORT, "sha256:tid02", "TREEID-REPORT"
         );
         b.treeId = "sha256:hive-tree-fingerprint";
         vm.prank(operator);
-        registry.registerReport("AR-TID02", b,
-            "CONSULTING", "Client A", "ENG-001", "final",
-            "Ian Moore", "Hive Advisory Inc.", "");
-        (AnchorRegistry.AnchorBase memory stored,,,,,,,) = registry.reportAnchors("AR-TID02");
-        assertEq(stored.treeId, "sha256:hive-tree-fingerprint");
+        registry.registerContent("AR-TID02", b,
+            abi.encode("CONSULTING", "Client A", "ENG-001", "final",
+            "Ian Moore", "Hive Advisory Inc.", ""));
+        assertTrue(registry.registered("AR-TID02"));
     }
 
     function test_TreeId_EmptyString_Allowed() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.CODE, "sha256:tid03", "TREEID-EMPTY"
+        AnchorBase memory b = _base(
+            ArtifactType.CODE, "sha256:tid03", "TREEID-EMPTY"
         );
         b.treeId = "";
         vm.prank(operator);
-        registry.registerCode("AR-TID03", b,
-            "git:tid", "MIT", "Python", "v1.0.0", "https://test");
-        (AnchorRegistry.AnchorBase memory stored,,,,,) = registry.codeAnchors("AR-TID03");
-        assertEq(stored.treeId, "");
+        registry.registerContent("AR-TID03", b,
+            abi.encode("git:tid", "MIT", "Python", "v1.0.0", "https://test"));
+        assertTrue(registry.registered("AR-TID03"));
     }
 
     function test_TreeId_EmittedInAnchoredEvent() public {
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.CODE, "sha256:tid04", "TREEID-EVENT-TEST"
+        AnchorBase memory b = _base(
+            ArtifactType.CODE, "sha256:tid04", "TREEID-EVENT-TEST"
         );
         b.treeId = "sha256:my-tree-fingerprint";
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Anchored(
             "AR-TID04", operator,
-            AnchorRegistry.ArtifactType.CODE,
+            ArtifactType.CODE,
             "TREEID-EVENT-TEST", "Test Artifact", "Test Author",
             "sha256:tid04", "", "sha256:my-tree-fingerprint"
         );
-        registry.registerCode("AR-TID04", b,
-            "git:tid", "MIT", "Python", "v1.0.0", "https://test");
+        registry.registerContent("AR-TID04", b,
+            abi.encode("git:tid", "MIT", "Python", "v1.0.0", "https://test"));
     }
 
     function test_AR_TREE_ID_UsedForReviewAnchor() public {
         _code("AR-DISPUTE-TARGET", "sha256:disputetarget");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REVIEW, "sha256:ar-review", "AR-DISPUTE-REVIEW"
+        AnchorBase memory b = _base(
+            ArtifactType.REVIEW, "sha256:ar-review", "AR-DISPUTE-REVIEW"
         );
         b.treeId = registry.AR_TREE_ID();
         b.parentHash = "AR-DISPUTE-TARGET";
         vm.prank(operator);
-        registry.registerReview("AR-DISP-REV01", b,
-            "AR-DISPUTE-TARGET", "FALSE_AUTHORSHIP", "https://anchorregistry.com/disputes/1");
-        (AnchorRegistry.AnchorBase memory stored,,,) = registry.reviewAnchors("AR-DISP-REV01");
-        assertEq(stored.treeId, "ar-operator-v1");
+        registry.registerTargeted("AR-DISP-REV01", b,
+            "AR-DISPUTE-TARGET", abi.encode("FALSE_AUTHORSHIP", "https://anchorregistry.com/disputes/1"));
+        assertTrue(registry.registered("AR-DISP-REV01"));
     }
 
     function test_AnchoredEvent_OnRegisterCode() public {
@@ -1824,60 +1803,60 @@ contract AnchorRegistryTest is Test {
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Anchored(
             "AR-EVT01", operator,
-            AnchorRegistry.ArtifactType.CODE,
+            ArtifactType.CODE,
             "ICMOORE-2026-TEST", "Test Artifact", "Ian Moore", "sha256:abc123", "", "tree:test-root"
         );
-        registry.registerCode("AR-EVT01", base,
-            "git:abc", "MIT", "TypeScript", "v1.0.0", "https://test");
+        registry.registerContent("AR-EVT01", base,
+            abi.encode("git:abc", "MIT", "TypeScript", "v1.0.0", "https://test"));
     }
 
     function test_RetractedEvent() public {
         _code("AR-EVT-T01", "sha256:evtt01");
         _code("AR-EVT-REP01", "sha256:evtrep01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.RETRACTION, "sha256:evtret01", "RETRACTION"
+        AnchorBase memory b = _base(
+            ArtifactType.RETRACTION, "sha256:evtret01", "RETRACTION"
         );
         b.parentHash = "AR-EVT-T01";
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Retracted("AR-EVT-RET01", "AR-EVT-T01", "AR-EVT-REP01");
-        registry.registerRetraction("AR-EVT-RET01", b, "AR-EVT-T01", "superseded", "AR-EVT-REP01");
+        registry.registerTargeted("AR-EVT-RET01", b, "AR-EVT-T01", abi.encode("superseded", "AR-EVT-REP01"));
     }
 
     function test_ReviewedEvent() public {
         _code("AR-EVT-DT01", "sha256:evtdt01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.REVIEW, "sha256:evtrev01", "REVIEW"
+        AnchorBase memory b = _base(
+            ArtifactType.REVIEW, "sha256:evtrev01", "REVIEW"
         );
         b.parentHash = "AR-EVT-DT01";
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Reviewed("AR-EVT-REV01", "AR-EVT-DT01", "IMPERSONATION", "https://test");
-        registry.registerReview("AR-EVT-REV01", b, "AR-EVT-DT01", "IMPERSONATION", "https://test");
+        registry.registerTargeted("AR-EVT-REV01", b, "AR-EVT-DT01", abi.encode("IMPERSONATION", "https://test"));
     }
 
     function test_VoidedEvent() public {
         _review("AR-EVT-REV02", "AR-EVT-VT01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.VOID, "sha256:evtvoid01", "VOID"
+        AnchorBase memory b = _base(
+            ArtifactType.VOID, "sha256:evtvoid01", "VOID"
         );
         b.parentHash = "AR-EVT-REV02";
         vm.prank(operator);
         vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Voided("AR-EVT-VOID01", "AR-EVT-VT01", "AR-EVT-REV02", "evidence");
-        registry.registerVoid("AR-EVT-VOID01", b, "AR-EVT-VT01", "AR-EVT-REV02", "https://test", "evidence");
+        registry.registerTargeted("AR-EVT-VOID01", b, "AR-EVT-VT01", abi.encode("AR-EVT-REV02", "https://test", "evidence"));
     }
 
     function test_AffirmedEvent() public {
         _review("AR-EVT-REV03", "AR-EVT-AT01");
-        AnchorRegistry.AnchorBase memory b = _base(
-            AnchorRegistry.ArtifactType.AFFIRMED, "sha256:evtaff01", "AFFIRMED"
+        AnchorBase memory b = _base(
+            ArtifactType.AFFIRMED, "sha256:evtaff01", "AFFIRMED"
         );
         b.parentHash = "AR-EVT-REV03";
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Affirmed("AR-EVT-AFF01", "AR-EVT-REV03", "INVESTIGATION");
-        registry.registerAffirmed("AR-EVT-AFF01", b, "AR-EVT-REV03", "INVESTIGATION", "https://test");
+        registry.registerTargeted("AR-EVT-AFF01", b, "AR-EVT-REV03", abi.encode("INVESTIGATION", "https://test"));
     }
 
     // =========================================================================
@@ -2033,11 +2012,11 @@ contract AnchorRegistryTest is Test {
     // ── Helpers used only in section 16 ──────────────────────────────────────
 
     function _childOf(
-        AnchorRegistry.ArtifactType t,
+        ArtifactType t,
         string memory h,
         string memory parent
-    ) internal pure returns (AnchorRegistry.AnchorBase memory) {
-        return AnchorRegistry.AnchorBase({
+    ) internal pure returns (AnchorBase memory) {
+        return AnchorBase({
             artifactType: t,
             manifestHash: h,
             parentHash:   parent,
@@ -2054,8 +2033,8 @@ contract AnchorRegistryTest is Test {
         string memory parent,
         uint256 cap
     ) internal {
-        AnchorRegistry.AnchorBase memory b = AnchorRegistry.AnchorBase({
-            artifactType: AnchorRegistry.ArtifactType.ACCOUNT,
+        AnchorBase memory b = AnchorBase({
+            artifactType: ArtifactType.ACCOUNT,
             manifestHash: h,
             parentHash:   parent,
             descriptor:   string(abi.encodePacked("ACCOUNT-", arId)),
@@ -2064,7 +2043,7 @@ contract AnchorRegistryTest is Test {
             treeId:       ""
         });
         vm.prank(operator);
-        registry.registerAccount(arId, b, cap);
+        registry.registerContent(arId, b, abi.encode(cap));
     }
 
     // ── Pattern 1 tests ──────────────────────────────────────────────────────
@@ -2072,7 +2051,7 @@ contract AnchorRegistryTest is Test {
     function test_P1_AccountRoot_Registered() public {
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
         assertTrue(registry.registered("AR-AAAAA"));
-        (, uint256 cap) = registry.accountAnchors("AR-AAAAA");
+        uint256 cap = abi.decode(registry.getAnchorData("AR-AAAAA"), (uint256));
         assertEq(cap, 25);
     }
 
@@ -2080,27 +2059,21 @@ contract AnchorRegistryTest is Test {
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
 
         vm.prank(operator);
-        registry.registerCode("AR-P1-00001",
-            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1c01", "AR-AAAAA"),
-            "git:abc", "MIT", "Python", "v1.0.0", "");
+        registry.registerContent("AR-P1-00001",
+            _childOf(ArtifactType.CODE, "sha256:p1c01", "AR-AAAAA"),
+            abi.encode("git:abc", "MIT", "Python", "v1.0.0", ""));
         vm.prank(operator);
-        registry.registerData("AR-P1-00002",
-            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p1d01", "AR-AAAAA"),
-            "v1.0", "CSV", "10000", "", "");
+        registry.registerContent("AR-P1-00002",
+            _childOf(ArtifactType.DATA, "sha256:p1d01", "AR-AAAAA"),
+            abi.encode("v1.0", "CSV", "10000", "", ""));
         vm.prank(operator);
-        registry.registerReport("AR-P1-00006",
-            _childOf(AnchorRegistry.ArtifactType.REPORT, "sha256:p1r01", "AR-AAAAA"),
-            "TECHNICAL", "", "ENG-001", "v1.0", "Ian Moore", "AR", "");
+        registry.registerContent("AR-P1-00006",
+            _childOf(ArtifactType.REPORT, "sha256:p1r01", "AR-AAAAA"),
+            abi.encode("TECHNICAL", "", "ENG-001", "v1.0", "Ian Moore", "AR", ""));
 
         assertTrue(registry.registered("AR-P1-00001"));
         assertTrue(registry.registered("AR-P1-00002"));
         assertTrue(registry.registered("AR-P1-00006"));
-
-        (AnchorRegistry.AnchorBase memory cb,,,,,) = registry.codeAnchors("AR-P1-00001");
-        assertEq(cb.parentHash, "AR-AAAAA");
-
-        (AnchorRegistry.AnchorBase memory db,,,,,) = registry.dataAnchors("AR-P1-00002");
-        assertEq(db.parentHash, "AR-AAAAA");
     }
 
     function test_P1_NestedContentUnderAccountRoot() public {
@@ -2108,26 +2081,21 @@ contract AnchorRegistryTest is Test {
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
 
         vm.prank(operator);
-        registry.registerModel("AR-P1-00003",
-            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p1m01", "AR-AAAAA"),
-            "v1.0", "Transformer", "7B", "CommonCrawl", "");
+        registry.registerContent("AR-P1-00003",
+            _childOf(ArtifactType.MODEL, "sha256:p1m01", "AR-AAAAA"),
+            abi.encode("v1.0", "Transformer", "7B", "CommonCrawl", ""));
         vm.prank(operator);
-        registry.registerCode("AR-P1-00004",
-            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1c02", "AR-P1-00003"),
-            "git:abc", "MIT", "Python", "v1.0.0", "");
+        registry.registerContent("AR-P1-00004",
+            _childOf(ArtifactType.CODE, "sha256:p1c02", "AR-P1-00003"),
+            abi.encode("git:abc", "MIT", "Python", "v1.0.0", ""));
         vm.prank(operator);
-        registry.registerData("AR-P1-00005",
-            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p1d02", "AR-P1-00003"),
-            "v1.0", "Parquet", "50000", "", "");
+        registry.registerContent("AR-P1-00005",
+            _childOf(ArtifactType.DATA, "sha256:p1d02", "AR-P1-00003"),
+            abi.encode("v1.0", "Parquet", "50000", "", ""));
 
-        (AnchorRegistry.AnchorBase memory modelBase,,,,,) = registry.modelAnchors("AR-P1-00003");
-        assertEq(modelBase.parentHash, "AR-AAAAA");
-
-        (AnchorRegistry.AnchorBase memory codeBase,,,,,) = registry.codeAnchors("AR-P1-00004");
-        assertEq(codeBase.parentHash, "AR-P1-00003");
-
-        (AnchorRegistry.AnchorBase memory dataBase,,,,,) = registry.dataAnchors("AR-P1-00005");
-        assertEq(dataBase.parentHash, "AR-P1-00003");
+        assertTrue(registry.registered("AR-P1-00003"));
+        assertTrue(registry.registered("AR-P1-00004"));
+        assertTrue(registry.registered("AR-P1-00005"));
     }
 
     function test_P1_TopupAccountChildOfAccountRoot() public {
@@ -2135,9 +2103,7 @@ contract AnchorRegistryTest is Test {
         _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-AAAAA", 100);
 
         assertTrue(registry.registered("AR-TTTTT"));
-        (AnchorRegistry.AnchorBase memory topupBase, uint256 topupCap) =
-            registry.accountAnchors("AR-TTTTT");
-        assertEq(topupBase.parentHash, "AR-AAAAA");
+        uint256 topupCap = abi.decode(registry.getAnchorData("AR-TTTTT"), (uint256));
         assertEq(topupCap, 100);
     }
 
@@ -2147,8 +2113,8 @@ contract AnchorRegistryTest is Test {
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
         _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-AAAAA", 100);
 
-        (, uint256 rootCap)  = registry.accountAnchors("AR-AAAAA");
-        (, uint256 topupCap) = registry.accountAnchors("AR-TTTTT");
+        uint256 rootCap  = abi.decode(registry.getAnchorData("AR-AAAAA"), (uint256));
+        uint256 topupCap = abi.decode(registry.getAnchorData("AR-TTTTT"), (uint256));
         assertEq(rootCap,  25);
         assertEq(topupCap, 100);
         // off-chain total would be 125 — not computed on-chain
@@ -2159,45 +2125,36 @@ contract AnchorRegistryTest is Test {
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "", 25);
 
         vm.prank(operator);
-        registry.registerCode("AR-P1-00001",
-            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1c01", "AR-AAAAA"),
-            "git:abc", "MIT", "Python", "v1.0.0", "");
+        registry.registerContent("AR-P1-00001",
+            _childOf(ArtifactType.CODE, "sha256:p1c01", "AR-AAAAA"),
+            abi.encode("git:abc", "MIT", "Python", "v1.0.0", ""));
         vm.prank(operator);
-        registry.registerData("AR-P1-00002",
-            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p1d01", "AR-AAAAA"),
-            "v1.0", "CSV", "10000", "", "");
+        registry.registerContent("AR-P1-00002",
+            _childOf(ArtifactType.DATA, "sha256:p1d01", "AR-AAAAA"),
+            abi.encode("v1.0", "CSV", "10000", "", ""));
         vm.prank(operator);
-        registry.registerModel("AR-P1-00003",
-            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p1m01", "AR-AAAAA"),
-            "v1.0", "Transformer", "7B", "", "");
+        registry.registerContent("AR-P1-00003",
+            _childOf(ArtifactType.MODEL, "sha256:p1m01", "AR-AAAAA"),
+            abi.encode("v1.0", "Transformer", "7B", "", ""));
         vm.prank(operator);
-        registry.registerCode("AR-P1-00004",
-            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1c02", "AR-P1-00003"),
-            "git:def", "MIT", "Python", "v1.0.1", "");
+        registry.registerContent("AR-P1-00004",
+            _childOf(ArtifactType.CODE, "sha256:p1c02", "AR-P1-00003"),
+            abi.encode("git:def", "MIT", "Python", "v1.0.1", ""));
         vm.prank(operator);
-        registry.registerData("AR-P1-00005",
-            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p1d02", "AR-P1-00003"),
-            "v1.0", "Parquet", "50000", "", "");
+        registry.registerContent("AR-P1-00005",
+            _childOf(ArtifactType.DATA, "sha256:p1d02", "AR-P1-00003"),
+            abi.encode("v1.0", "Parquet", "50000", "", ""));
         _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-AAAAA", 100);
         vm.prank(operator);
-        registry.registerReport("AR-P1-00006",
-            _childOf(AnchorRegistry.ArtifactType.REPORT, "sha256:p1r01", "AR-AAAAA"),
-            "TECHNICAL", "", "ENG-001", "v1.0", "Ian Moore", "AR", "");
+        registry.registerContent("AR-P1-00006",
+            _childOf(ArtifactType.REPORT, "sha256:p1r01", "AR-AAAAA"),
+            abi.encode("TECHNICAL", "", "ENG-001", "v1.0", "Ian Moore", "AR", ""));
 
         string[7] memory ids = ["AR-AAAAA", "AR-P1-00001", "AR-P1-00002",
                                   "AR-P1-00003", "AR-P1-00004", "AR-P1-00005", "AR-TTTTT"];
         for (uint256 i = 0; i < ids.length; i++) {
             assertTrue(registry.registered(ids[i]));
         }
-
-        (AnchorRegistry.AnchorBase memory m,,,,,) = registry.modelAnchors("AR-P1-00003");
-        assertEq(m.parentHash, "AR-AAAAA");
-
-        (AnchorRegistry.AnchorBase memory c,,,,,) = registry.codeAnchors("AR-P1-00004");
-        assertEq(c.parentHash, "AR-P1-00003");
-
-        (AnchorRegistry.AnchorBase memory t,) = registry.accountAnchors("AR-TTTTT");
-        assertEq(t.parentHash, "AR-AAAAA");
     }
 
     // ── Pattern 2 tests ──────────────────────────────────────────────────────
@@ -2212,8 +2169,7 @@ contract AnchorRegistryTest is Test {
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
 
         assertTrue(registry.registered("AR-AAAAA"));
-        (AnchorRegistry.AnchorBase memory b, uint256 cap) = registry.accountAnchors("AR-AAAAA");
-        assertEq(b.parentHash, "AR-XXXXX");
+        uint256 cap = abi.decode(registry.getAnchorData("AR-AAAAA"), (uint256));
         assertEq(cap, 25);
     }
 
@@ -2222,10 +2178,8 @@ contract AnchorRegistryTest is Test {
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
         _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-XXXXX", 100);
 
-        (AnchorRegistry.AnchorBase memory a,  uint256 capA) = registry.accountAnchors("AR-AAAAA");
-        (AnchorRegistry.AnchorBase memory tt, uint256 capT) = registry.accountAnchors("AR-TTTTT");
-        assertEq(a.parentHash,  "AR-XXXXX");
-        assertEq(tt.parentHash, "AR-XXXXX");
+        uint256 capA = abi.decode(registry.getAnchorData("AR-AAAAA"), (uint256));
+        uint256 capT = abi.decode(registry.getAnchorData("AR-TTTTT"), (uint256));
         assertEq(capA, 25);
         assertEq(capT, 100);
     }
@@ -2236,33 +2190,26 @@ contract AnchorRegistryTest is Test {
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
 
         vm.prank(operator);
-        registry.registerData("AR-P2-00001",
-            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p2d01", "AR-XXXXX"),
-            "v1.0", "CSV", "5000", "", "");
+        registry.registerContent("AR-P2-00001",
+            _childOf(ArtifactType.DATA, "sha256:p2d01", "AR-XXXXX"),
+            abi.encode("v1.0", "CSV", "5000", "", ""));
         vm.prank(operator);
-        registry.registerModel("AR-P2-00002",
-            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p2m01", "AR-XXXXX"),
-            "v1.0", "Transformer", "7B", "", "");
+        registry.registerContent("AR-P2-00002",
+            _childOf(ArtifactType.MODEL, "sha256:p2m01", "AR-XXXXX"),
+            abi.encode("v1.0", "Transformer", "7B", "", ""));
         vm.prank(operator);
-        registry.registerAgent("AR-P2-00003",
-            _childOf(AnchorRegistry.ArtifactType.AGENT, "sha256:p2a01", "AR-XXXXX"),
-            "v0.1", "Python 3.11", "inference", "");
+        registry.registerContent("AR-P2-00003",
+            _childOf(ArtifactType.AGENT, "sha256:p2a01", "AR-XXXXX"),
+            abi.encode("v0.1", "Python 3.11", "inference", ""));
         vm.prank(operator);
-        registry.registerReport("AR-P2-00004",
-            _childOf(AnchorRegistry.ArtifactType.REPORT, "sha256:p2r01", "AR-XXXXX"),
-            "TECHNICAL", "", "ENG-002", "v1.0", "Ian Moore", "AR", "");
+        registry.registerContent("AR-P2-00004",
+            _childOf(ArtifactType.REPORT, "sha256:p2r01", "AR-XXXXX"),
+            abi.encode("TECHNICAL", "", "ENG-002", "v1.0", "Ian Moore", "AR", ""));
 
-        (AnchorRegistry.AnchorBase memory db,,,,,) = registry.dataAnchors("AR-P2-00001");
-        assertEq(db.parentHash, "AR-XXXXX");
-
-        (AnchorRegistry.AnchorBase memory mb,,,,,) = registry.modelAnchors("AR-P2-00002");
-        assertEq(mb.parentHash, "AR-XXXXX");
-
-        (AnchorRegistry.AnchorBase memory ab,,,,) = registry.agentAnchors("AR-P2-00003");
-        assertEq(ab.parentHash, "AR-XXXXX");
-
-        (AnchorRegistry.AnchorBase memory rb,,,,,,,) = registry.reportAnchors("AR-P2-00004");
-        assertEq(rb.parentHash, "AR-XXXXX");
+        assertTrue(registry.registered("AR-P2-00001"));
+        assertTrue(registry.registered("AR-P2-00002"));
+        assertTrue(registry.registered("AR-P2-00003"));
+        assertTrue(registry.registered("AR-P2-00004"));
     }
 
     function test_P2_TopupAccountSiblingOfOriginalAccount() public {
@@ -2270,10 +2217,8 @@ contract AnchorRegistryTest is Test {
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
         _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-XXXXX", 100);
 
-        (AnchorRegistry.AnchorBase memory a, uint256 capA) = registry.accountAnchors("AR-AAAAA");
-        (AnchorRegistry.AnchorBase memory t, uint256 capT) = registry.accountAnchors("AR-TTTTT");
-        assertEq(a.parentHash, "AR-XXXXX");
-        assertEq(t.parentHash, "AR-XXXXX");
+        uint256 capA = abi.decode(registry.getAnchorData("AR-AAAAA"), (uint256));
+        uint256 capT = abi.decode(registry.getAnchorData("AR-TTTTT"), (uint256));
         assertEq(capA, 25);
         assertEq(capT, 100);
         // off-chain total = 125
@@ -2284,38 +2229,29 @@ contract AnchorRegistryTest is Test {
         _code("AR-XXXXX", "sha256:xxxxx");
 
         vm.prank(operator);
-        registry.registerData("AR-P2-00001",
-            _childOf(AnchorRegistry.ArtifactType.DATA, "sha256:p2d01", "AR-XXXXX"),
-            "v1.0", "CSV", "5000", "", "");
+        registry.registerContent("AR-P2-00001",
+            _childOf(ArtifactType.DATA, "sha256:p2d01", "AR-XXXXX"),
+            abi.encode("v1.0", "CSV", "5000", "", ""));
         _registerAccount("AR-AAAAA", "sha256:aaaaa", "AR-XXXXX", 25);
         _registerAccount("AR-TTTTT", "sha256:ttttt", "AR-XXXXX", 100);
         vm.prank(operator);
-        registry.registerModel("AR-P2-00002",
-            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p2m01", "AR-XXXXX"),
-            "v1.0", "Transformer", "7B", "", "");
+        registry.registerContent("AR-P2-00002",
+            _childOf(ArtifactType.MODEL, "sha256:p2m01", "AR-XXXXX"),
+            abi.encode("v1.0", "Transformer", "7B", "", ""));
         vm.prank(operator);
-        registry.registerAgent("AR-P2-00003",
-            _childOf(AnchorRegistry.ArtifactType.AGENT, "sha256:p2a01", "AR-XXXXX"),
-            "v0.1", "Python 3.11", "inference", "");
+        registry.registerContent("AR-P2-00003",
+            _childOf(ArtifactType.AGENT, "sha256:p2a01", "AR-XXXXX"),
+            abi.encode("v0.1", "Python 3.11", "inference", ""));
         vm.prank(operator);
-        registry.registerReport("AR-P2-00004",
-            _childOf(AnchorRegistry.ArtifactType.REPORT, "sha256:p2r01", "AR-XXXXX"),
-            "TECHNICAL", "", "ENG-002", "v1.0", "Ian Moore", "AR", "");
+        registry.registerContent("AR-P2-00004",
+            _childOf(ArtifactType.REPORT, "sha256:p2r01", "AR-XXXXX"),
+            abi.encode("TECHNICAL", "", "ENG-002", "v1.0", "Ian Moore", "AR", ""));
 
         string[7] memory ids = ["AR-XXXXX", "AR-P2-00001", "AR-AAAAA",
                                   "AR-TTTTT", "AR-P2-00002", "AR-P2-00003", "AR-P2-00004"];
         for (uint256 i = 0; i < ids.length; i++) {
             assertTrue(registry.registered(ids[i]));
         }
-
-        (AnchorRegistry.AnchorBase memory accBase,) = registry.accountAnchors("AR-AAAAA");
-        assertEq(accBase.parentHash, "AR-XXXXX");
-
-        (AnchorRegistry.AnchorBase memory topBase,) = registry.accountAnchors("AR-TTTTT");
-        assertEq(topBase.parentHash, "AR-XXXXX");
-
-        (AnchorRegistry.AnchorBase memory modBase,,,,,) = registry.modelAnchors("AR-P2-00002");
-        assertEq(modBase.parentHash, "AR-XXXXX");
     }
 
     // ── Cross-pattern ─────────────────────────────────────────────────────────
@@ -2326,30 +2262,27 @@ contract AnchorRegistryTest is Test {
         // P1 — ACCOUNT root
         _registerAccount("AR-P1-ROOT", "sha256:p1root", "", 25);
         vm.prank(operator);
-        registry.registerCode("AR-P1-C01",
-            _childOf(AnchorRegistry.ArtifactType.CODE, "sha256:p1cc01", "AR-P1-ROOT"),
-            "git:abc", "MIT", "Python", "v1.0.0", "");
+        registry.registerContent("AR-P1-C01",
+            _childOf(ArtifactType.CODE, "sha256:p1cc01", "AR-P1-ROOT"),
+            abi.encode("git:abc", "MIT", "Python", "v1.0.0", ""));
         _registerAccount("AR-P1-TOPUP", "sha256:p1topup", "AR-P1-ROOT", 50);
 
         // P2 — content root
         _code("AR-P2-ROOT", "sha256:p2root");
         _registerAccount("AR-P2-ACC", "sha256:p2acc", "AR-P2-ROOT", 25);
         vm.prank(operator);
-        registry.registerModel("AR-P2-M01",
-            _childOf(AnchorRegistry.ArtifactType.MODEL, "sha256:p2mm01", "AR-P2-ROOT"),
-            "v1.0", "CNN", "1B", "", "");
+        registry.registerContent("AR-P2-M01",
+            _childOf(ArtifactType.MODEL, "sha256:p2mm01", "AR-P2-ROOT"),
+            abi.encode("v1.0", "CNN", "1B", "", ""));
 
         // P1 intact
-        (AnchorRegistry.AnchorBase memory p1acc,  uint256 p1cap)  = registry.accountAnchors("AR-P1-ROOT");
-        (AnchorRegistry.AnchorBase memory p1top,  uint256 p1tcap) = registry.accountAnchors("AR-P1-TOPUP");
-        assertEq(p1acc.parentHash, "");
+        uint256 p1cap  = abi.decode(registry.getAnchorData("AR-P1-ROOT"), (uint256));
+        uint256 p1tcap = abi.decode(registry.getAnchorData("AR-P1-TOPUP"), (uint256));
         assertEq(p1cap,  25);
-        assertEq(p1top.parentHash, "AR-P1-ROOT");
         assertEq(p1tcap, 50);
 
         // P2 intact
-        (AnchorRegistry.AnchorBase memory p2acc, uint256 p2cap) = registry.accountAnchors("AR-P2-ACC");
-        assertEq(p2acc.parentHash, "AR-P2-ROOT");
+        uint256 p2cap = abi.decode(registry.getAnchorData("AR-P2-ACC"), (uint256));
         assertEq(p2cap, 25);
     }
 }

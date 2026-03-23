@@ -1,0 +1,309 @@
+// SPDX-License-Identifier: BUSL-1.1
+// Change Date:    March 12, 2028
+// Change License: Apache-2.0
+// Licensor:       Ian Moore (icmoore)
+
+pragma solidity ^0.8.24;
+
+/// @title  AnchorTypes
+/// @notice Shared type definitions, structs, events, and errors for AnchorRegistry.
+/// @dev    This file produces no bytecode — it is purely for imports and ABI reference.
+
+// =========================================================================
+// ARTIFACT TYPES
+// =========================================================================
+
+enum ArtifactType {
+    // ── CONTENT (0-10) ────────────────────────────────────────────────
+    CODE,        // 0
+    RESEARCH,    // 1
+    DATA,        // 2
+    MODEL,       // 3
+    AGENT,       // 4
+    MEDIA,       // 5
+    TEXT,        // 6
+    POST,        // 7
+    ONCHAIN,     // 8
+    REPORT,      // 9
+    NOTE,        // 10
+
+    // ── LIFECYCLE (11) ────────────────────────────────────────────────
+    EVENT,       // 11
+
+    // ── TRANSACTION (12) ──────────────────────────────────────────────
+    RECEIPT,     // 12
+
+    // ── GATED (13-15) ─────────────────────────────────────────────────
+    LEGAL,       // 13
+    ENTITY,      // 14
+    PROOF,       // 15
+
+    // ── SELF-SERVICE (16) ─────────────────────────────────────────────
+    RETRACTION,  // 16
+
+    // ── REVIEW (17-19) ────────────────────────────────────────────────
+    REVIEW,      // 17
+    VOID,        // 18
+    AFFIRMED,    // 19
+
+    // ── BILLING (20) ──────────────────────────────────────────────────
+    ACCOUNT,     // 20
+
+    // ── CATCH-ALL (21) ────────────────────────────────────────────────
+    OTHER        // 21
+}
+
+// =========================================================================
+// BASE STRUCT
+// =========================================================================
+
+struct AnchorBase {
+    ArtifactType artifactType;
+    string manifestHash;  // SHA256 of full manifest (all fields including off-chain)
+    string parentHash;    // AR-ID of parent anchor, empty if root
+    string descriptor;    // human-readable e.g. ICMOORE-2026-UNISWAPPY
+    string title;         // artifact title e.g. "UniswapPy v1.0"
+    string author;        // artifact author e.g. "Ian Moore" or "anonymous"
+    string treeId;        // cryptographic tree identity: sha256(anchorKey + rootArId)
+}
+
+// =========================================================================
+// CONTENT STRUCTS — types 0-10 (kept for ABI reference / off-chain decoding)
+// =========================================================================
+
+/// @notice CODE — repos, packages, commits, scripts.
+struct CodeAnchor {
+    AnchorBase base;
+    string gitHash;
+    string license;
+    string language;
+    string version;
+    string url;
+}
+
+/// @notice RESEARCH — papers, whitepapers, preprints, theses.
+struct ResearchAnchor {
+    AnchorBase base;
+    string doi;
+    string institution;
+    string coAuthors;
+    string url;
+}
+
+/// @notice DATA — datasets, benchmarks, databases.
+struct DataAnchor {
+    AnchorBase base;
+    string dataVersion;
+    string format;
+    string rowCount;
+    string schemaUrl;
+    string url;
+}
+
+/// @notice MODEL — AI models, weights, checkpoints.
+struct ModelAnchor {
+    AnchorBase base;
+    string modelVersion;
+    string architecture;
+    string parameters;
+    string trainingDataset;
+    string url;
+}
+
+/// @notice AGENT — AI agents, bots, assistants.
+struct AgentAnchor {
+    AnchorBase base;
+    string agentVersion;
+    string runtime;
+    string capabilities;
+    string url;
+}
+
+/// @notice MEDIA — video, audio, images, photography.
+struct MediaAnchor {
+    AnchorBase base;
+    string mediaType;
+    string format;
+    string duration;
+    string isrc;
+    string url;
+}
+
+/// @notice TEXT — blogs, articles, books, essays.
+struct TextAnchor {
+    AnchorBase base;
+    string isbn;
+    string publisher;
+    string language;
+    string url;
+}
+
+/// @notice POST — tweets, reddit posts, social content.
+struct PostAnchor {
+    AnchorBase base;
+    string platform;
+    string postId;
+    string postDate;
+    string url;
+}
+
+/// @notice ONCHAIN — Ethereum addresses, transactions, contracts, NFTs, token IDs, DAOs, multisigs.
+struct OnChainAnchor {
+    AnchorBase base;
+    string chainId;
+    string assetType;
+    string contractAddress;
+    string txHash;
+    string tokenId;
+    string blockNumber;
+    string url;
+}
+
+/// @notice REPORT — consulting, financial, compliance, ESG, technical, audit reports.
+struct ReportAnchor {
+    AnchorBase base;
+    string reportType;
+    string client;
+    string engagement;
+    string version;
+    string authors;
+    string institution;
+    string url;
+}
+
+/// @notice NOTE — memos, meeting notes, correspondence, observations, field notes.
+struct NoteAnchor {
+    AnchorBase base;
+    string noteType;
+    string date;
+    string participants;
+    string url;
+}
+
+// =========================================================================
+// LIFECYCLE STRUCT — type 11
+// =========================================================================
+
+/// @notice EVENT — dual-use lifecycle anchor for human events and machine/agent processes.
+struct EventAnchor {
+    AnchorBase base;
+    string executor;
+    string eventType;
+    string eventDate;
+    string location;
+    string orchestrator;
+    string url;
+}
+
+// =========================================================================
+// TRANSACTION STRUCT — type 12
+// =========================================================================
+
+/// @notice RECEIPT — proof of commercial, medical, financial, government, event, or service transactions.
+struct ReceiptAnchor {
+    AnchorBase base;
+    string receiptType;
+    string merchant;
+    string amount;
+    string currency;
+    string orderId;
+    string platform;
+    string url;
+}
+
+// =========================================================================
+// GATED STRUCTS — types 13-15 (suppressed at launch)
+// =========================================================================
+
+/// @notice LEGAL — contracts, patents, filings, disclosures.
+struct LegalAnchor {
+    AnchorBase base;
+    string docType;
+    string jurisdiction;
+    string parties;
+    string effectiveDate;
+    string url;
+}
+
+/// @notice ENTITY — persons, companies, institutions, governments, AI systems.
+struct EntityAnchor {
+    AnchorBase base;
+    string entityType;
+    string entityDomain;
+    string verificationMethod;
+    string verificationProof;
+    string canonicalUrl;
+    string documentHash;
+}
+
+/// @notice PROOF — ZK proofs, cryptographic proofs, formal verifications, security audits.
+struct ProofAnchor {
+    AnchorBase base;
+    string proofType;
+    string proofSystem;
+    string circuitId;
+    string vkeyHash;
+    string auditFirm;
+    string auditScope;
+    string verifierUrl;
+    string reportUrl;
+    string proofHash;
+}
+
+// =========================================================================
+// SELF-SERVICE STRUCT — type 16
+// =========================================================================
+
+struct RetractionAnchor {
+    AnchorBase base;
+    string targetArId;
+    string reason;
+    string replacedBy;
+}
+
+// =========================================================================
+// REVIEW STRUCTS — types 17-19
+// =========================================================================
+
+struct ReviewAnchor {
+    AnchorBase base;
+    string targetArId;
+    string reviewType;
+    string evidenceUrl;
+}
+
+struct VoidAnchor {
+    AnchorBase base;
+    string targetArId;
+    string reviewArId;
+    string findingUrl;
+    string evidence;
+}
+
+struct AffirmedAnchor {
+    AnchorBase base;
+    string targetArId;
+    string affirmedBy;
+    string findingUrl;
+}
+
+// =========================================================================
+// BILLING STRUCT — type 20
+// =========================================================================
+
+struct AccountAnchor {
+    AnchorBase base;
+    uint256 capacity;
+}
+
+// =========================================================================
+// CATCH-ALL STRUCT — type 21
+// =========================================================================
+
+struct OtherAnchor {
+    AnchorBase base;
+    string kind;
+    string platform;
+    string url;
+    string value;
+}

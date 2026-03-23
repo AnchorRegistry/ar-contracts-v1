@@ -27,16 +27,25 @@ AnchorRegistry is immutable provenance infrastructure for the AI era. Any creato
 
 ---
 
+## Live Deployment — Sepolia
+
+AnchorRegistry is deployed and verified on Ethereum Sepolia at [`0x488ab4Aa772Fca36e45e1CB7223f859d2d1CFF36`](https://sepolia.etherscan.io/address/0x488ab4aa772fca36e45e1cb7223f859d2d1cff36). 179 unit tests and 24 fork tests pass against the live contract. See [DEPLOYMENTS.md](DEPLOYMENTS.md) for full details.
+
+---
+
 ## Repository Structure
 
 ```
-ar-onchain/
+ar-contracts-v1/
 ├── src/
-│   └── AnchorRegistry.sol      # The contract — deployed once, immutable forever
+│   ├── AnchorTypes.sol            # Type definitions — enum, structs, errors
+│   └── AnchorRegistry.sol         # The contract — deployed once, immutable forever
 ├── test/
-│   └── AnchorRegistry.t.sol    # Full Foundry test suite (177 tests)
+│   ├── AnchorRegistry.t.sol       # Full Foundry test suite (179 tests)
+│   └── AnchorRegistry.fork.t.sol  # Fork tests against live Sepolia (24 tests)
 ├── script/
-│   └── Deploy.s.sol            # Deployment script (Sepolia + Base mainnet)
+│   └── Deploy.s.sol               # Deployment script (Sepolia + Base mainnet)
+├── DEPLOYMENTS.md                 # Live deployment details and test results
 ├── foundry.toml
 ├── .env.example
 └── .gitignore
