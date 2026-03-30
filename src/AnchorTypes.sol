@@ -14,7 +14,7 @@ pragma solidity ^0.8.24;
 // =========================================================================
 
 enum ArtifactType {
-    // ── CONTENT (0-10) ────────────────────────────────────────────────
+    // ── CONTENT (0-11) ────────────────────────────────────────────────
     CODE,        // 0
     RESEARCH,    // 1
     DATA,        // 2
@@ -26,31 +26,32 @@ enum ArtifactType {
     ONCHAIN,     // 8
     REPORT,      // 9
     NOTE,        // 10
+    WEBSITE,     // 11
 
-    // ── LIFECYCLE (11) ────────────────────────────────────────────────
-    EVENT,       // 11
+    // ── LIFECYCLE (12) ────────────────────────────────────────────────
+    EVENT,       // 12
 
-    // ── TRANSACTION (12) ──────────────────────────────────────────────
-    RECEIPT,     // 12
+    // ── TRANSACTION (13) ──────────────────────────────────────────────
+    RECEIPT,     // 13
 
-    // ── GATED (13-15) ─────────────────────────────────────────────────
-    LEGAL,       // 13
-    ENTITY,      // 14
-    PROOF,       // 15
+    // ── GATED (14-16) ─────────────────────────────────────────────────
+    LEGAL,       // 14
+    ENTITY,      // 15
+    PROOF,       // 16
 
-    // ── SELF-SERVICE (16) ─────────────────────────────────────────────
-    RETRACTION,  // 16
+    // ── SELF-SERVICE (17) ─────────────────────────────────────────────
+    RETRACTION,  // 17
 
-    // ── REVIEW (17-19) ────────────────────────────────────────────────
-    REVIEW,      // 17
-    VOID,        // 18
-    AFFIRMED,    // 19
+    // ── REVIEW (18-20) ────────────────────────────────────────────────
+    REVIEW,      // 18
+    VOID,        // 19
+    AFFIRMED,    // 20
 
-    // ── BILLING (20) ──────────────────────────────────────────────────
-    ACCOUNT,     // 20
+    // ── BILLING (21) ──────────────────────────────────────────────────
+    ACCOUNT,     // 21
 
-    // ── CATCH-ALL (21) ────────────────────────────────────────────────
-    OTHER        // 21
+    // ── CATCH-ALL (22) ────────────────────────────────────────────────
+    OTHER        // 22
 }
 
 // =========================================================================
@@ -60,7 +61,7 @@ enum ArtifactType {
 struct AnchorBase {
     ArtifactType artifactType;
     string manifestHash;  // SHA256 of full manifest (all fields including off-chain)
-    string parentHash;    // AR-ID of parent anchor, empty if root
+    string parentArId;    // AR-ID of parent anchor, empty if root
     string descriptor;    // human-readable e.g. ICMOORE-2026-UNISWAPPY
     string title;         // artifact title e.g. "UniswapPy v1.0"
     string author;        // artifact author e.g. "Ian Moore" or "anonymous"
@@ -68,7 +69,7 @@ struct AnchorBase {
 }
 
 // =========================================================================
-// CONTENT STRUCTS — types 0-10 (kept for ABI reference / off-chain decoding)
+// CONTENT STRUCTS — types 0-11 (kept for ABI reference / off-chain decoding)
 // =========================================================================
 
 /// @notice CODE — repos, packages, commits, scripts.
@@ -180,8 +181,18 @@ struct NoteAnchor {
     string url;
 }
 
+/// @notice WEBSITE — canonical domain presence for a project, creator, or entity.
+///         url is the primary identity field. The file hash is a snapshot of the
+///         site at registration time (e.g. SHA256 of rendered HTML or sitemap).
+struct WebsiteAnchor {
+    AnchorBase base;
+    string url;          // canonical domain e.g. https://defipy.org
+    string platform;     // e.g. "Next.js", "WordPress", "Vercel"
+    string description;  // brief description of the site
+}
+
 // =========================================================================
-// LIFECYCLE STRUCT — type 11
+// LIFECYCLE STRUCT — type 12
 // =========================================================================
 
 /// @notice EVENT — dual-use lifecycle anchor for human events and machine/agent processes.
@@ -196,7 +207,7 @@ struct EventAnchor {
 }
 
 // =========================================================================
-// TRANSACTION STRUCT — type 12
+// TRANSACTION STRUCT — type 13
 // =========================================================================
 
 /// @notice RECEIPT — proof of commercial, medical, financial, government, event, or service transactions.
@@ -212,7 +223,7 @@ struct ReceiptAnchor {
 }
 
 // =========================================================================
-// GATED STRUCTS — types 13-15 (suppressed at launch)
+// GATED STRUCTS — types 14-16 (suppressed at launch)
 // =========================================================================
 
 /// @notice LEGAL — contracts, patents, filings, disclosures.
@@ -251,7 +262,7 @@ struct ProofAnchor {
 }
 
 // =========================================================================
-// SELF-SERVICE STRUCT — type 16
+// SELF-SERVICE STRUCT — type 17
 // =========================================================================
 
 struct RetractionAnchor {
@@ -262,7 +273,7 @@ struct RetractionAnchor {
 }
 
 // =========================================================================
-// REVIEW STRUCTS — types 17-19
+// REVIEW STRUCTS — types 18-20
 // =========================================================================
 
 struct ReviewAnchor {
@@ -288,7 +299,7 @@ struct AffirmedAnchor {
 }
 
 // =========================================================================
-// BILLING STRUCT — type 20
+// BILLING STRUCT — type 21
 // =========================================================================
 
 struct AccountAnchor {
@@ -297,7 +308,7 @@ struct AccountAnchor {
 }
 
 // =========================================================================
-// CATCH-ALL STRUCT — type 21
+// CATCH-ALL STRUCT — type 22
 // =========================================================================
 
 struct OtherAnchor {

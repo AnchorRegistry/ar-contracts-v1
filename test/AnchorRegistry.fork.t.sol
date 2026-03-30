@@ -64,7 +64,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-code-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-CODE-001",
             title:        "Fork Test Code",
             author:       "fork-tester",
@@ -87,7 +87,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.RESEARCH,
             manifestHash: "sha256:fork-research-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-RESEARCH-001",
             title:        "Fork Test Paper",
             author:       "fork-tester",
@@ -110,7 +110,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.MODEL,
             manifestHash: "sha256:fork-model-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-MODEL-001",
             title:        "Fork Test Model",
             author:       "fork-tester",
@@ -126,14 +126,14 @@ contract AnchorRegistryForkTest is Test {
     }
 
     // =====================================================================
-    // 5. REGISTER CONTENT — EVENT (type 11)
+    // 5. REGISTER CONTENT — EVENT (type 12)
     // =====================================================================
 
     function test_Fork_RegisterEvent() public {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.EVENT,
             manifestHash: "sha256:fork-event-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-EVENT-001",
             title:        "Fork Test Conference",
             author:       "fork-tester",
@@ -149,14 +149,14 @@ contract AnchorRegistryForkTest is Test {
     }
 
     // =====================================================================
-    // 6. REGISTER CONTENT — RECEIPT (type 12)
+    // 6. REGISTER CONTENT — RECEIPT (type 13)
     // =====================================================================
 
     function test_Fork_RegisterReceipt() public {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.RECEIPT,
             manifestHash: "sha256:fork-receipt-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-RECEIPT-001",
             title:        "Fork Test Purchase",
             author:       "fork-tester",
@@ -172,14 +172,14 @@ contract AnchorRegistryForkTest is Test {
     }
 
     // =====================================================================
-    // 7. REGISTER CONTENT — ACCOUNT (type 20)
+    // 7. REGISTER CONTENT — ACCOUNT (type 21)
     // =====================================================================
 
     function test_Fork_RegisterAccount() public {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.ACCOUNT,
             manifestHash: "sha256:fork-account-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-ACCOUNT-001",
             title:        "Fork Test Account",
             author:       "fork-tester",
@@ -203,7 +203,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory parentBase = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-parent-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-PARENT-001",
             title:        "Parent Code",
             author:       "fork-tester",
@@ -216,7 +216,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory childBase = AnchorBase({
             artifactType: ArtifactType.DATA,
             manifestHash: "sha256:fork-child-001",
-            parentHash:   "AR-FORK-PARENT-001",
+            parentArId:   "AR-FORK-PARENT-001",
             descriptor:   "FORK-CHILD-001",
             title:        "Child Dataset",
             author:       "fork-tester",
@@ -238,7 +238,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory targetBase = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-retract-target",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-RETRACT-TARGET",
             title:        "Code to Retract",
             author:       "fork-tester",
@@ -251,7 +251,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory retractBase = AnchorBase({
             artifactType: ArtifactType.RETRACTION,
             manifestHash: "sha256:fork-retraction-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-RETRACTION-001",
             title:        "Retraction of target",
             author:       "fork-tester",
@@ -273,7 +273,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory targetBase = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-review-target",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-REVIEW-TARGET",
             title:        "Suspicious Code",
             author:       "fork-tester",
@@ -286,7 +286,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory reviewBase = AnchorBase({
             artifactType: ArtifactType.REVIEW,
             manifestHash: "sha256:fork-review-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-REVIEW-001",
             title:        "Review of suspicious code",
             author:       "ar-operator",
@@ -299,7 +299,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory voidBase = AnchorBase({
             artifactType: ArtifactType.VOID,
             manifestHash: "sha256:fork-void-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-VOID-001",
             title:        "Void finding",
             author:       "ar-operator",
@@ -312,7 +312,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory affirmedBase = AnchorBase({
             artifactType: ArtifactType.AFFIRMED,
             manifestHash: "sha256:fork-affirmed-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-AFFIRMED-001",
             title:        "Affirmed void",
             author:       "ar-operator",
@@ -334,7 +334,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-stranger",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-STRANGER",
             title:        "Unauthorized",
             author:       "stranger",
@@ -354,7 +354,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-dup-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-DUP-001",
             title:        "First registration",
             author:       "fork-tester",
@@ -368,7 +368,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base2 = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-dup-002",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-DUP-002",
             title:        "Duplicate attempt",
             author:       "fork-tester",
@@ -388,7 +388,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-badparent",
-            parentHash:   "AR-DOES-NOT-EXIST",
+            parentArId:   "AR-DOES-NOT-EXIST",
             descriptor:   "FORK-BADPARENT",
             title:        "Bad parent ref",
             author:       "fork-tester",
@@ -408,7 +408,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.LEGAL,
             manifestHash: "sha256:fork-legal",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-LEGAL",
             title:        "Legal doc",
             author:       "fork-tester",
@@ -428,7 +428,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-backup-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-BACKUP-001",
             title:        "Backup Op Test",
             author:       "backup-op",
@@ -449,7 +449,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.NOTE,
             manifestHash: "sha256:fork-note-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-NOTE-001",
             title:        "Test Note",
             author:       "fork-tester",
@@ -478,7 +478,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.ACCOUNT,
             manifestHash: "sha256:fork-account-low",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-ACCOUNT-LOW",
             title:        "Low Capacity",
             author:       "fork-tester",

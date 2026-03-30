@@ -12,21 +12,21 @@ import "./AnchorTypes.sol";
 ///         Immutable record of what existed, when, and who registered it.
 /// @dev    Deployed once on Base (Ethereum L2). Cannot be modified post-deployment.
 ///
-///         Twenty-two artifact types in eight logical groups:
+///         Twenty-three artifact types in eight logical groups:
 ///
-///         CONTENT (0-10):    CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN, REPORT, NOTE
-///         LIFECYCLE (11):    EVENT
-///         TRANSACTION (12):  RECEIPT
-///         GATED (13-15):     LEGAL, ENTITY, PROOF  
-///         SELF-SERVICE (16): RETRACTION
-///         REVIEW (17-19):    REVIEW, VOID, AFFIRMED
-///         BILLING (20):      ACCOUNT
-///         CATCH-ALL (21):    OTHER
+///         CONTENT (0-11):    CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN, REPORT, NOTE, WEBSITE
+///         LIFECYCLE (12):    EVENT
+///         TRANSACTION (13):  RECEIPT
+///         GATED (14-16):     LEGAL, ENTITY, PROOF
+///         SELF-SERVICE (17): RETRACTION
+///         REVIEW (18-20):    REVIEW, VOID, AFFIRMED
+///         BILLING (21):      ACCOUNT
+///         CATCH-ALL (22):    OTHER
 ///
 ///         Three register entry points:
-///         registerContent(arId, base, extra)   — types 0-12, 20, 21 (onlyOperator)
-///         registerGated(arId, base, extra)     — types 13-15 (onlyLegal/Entity/ProofOperator)
-///         registerTargeted(arId, base, targetArId, extra) — types 16-19 (onlyOperator)
+///         registerContent(arId, base, extra)   — types 0-13, 21, 22 (onlyOperator)
+///         registerGated(arId, base, extra)     — types 14-16 (onlyLegal/Entity/ProofOperator)
+///         registerTargeted(arId, base, targetArId, extra) — types 17-20 (onlyOperator)
 
 contract AnchorRegistry {
 
@@ -76,11 +76,12 @@ contract AnchorRegistry {
         string  indexed arId,
         address indexed registrant,
         ArtifactType    artifactType,
+        string          arIdPlain,
         string          descriptor,
         string          title,
         string          author,
         string          manifestHash,
-        string          parentHash,
+        string          parentArId,
         string          treeId
     );
 
@@ -107,7 +108,7 @@ contract AnchorRegistry {
     error AlreadyRegistered(string arId);
     error EmptyManifestHash();
     error EmptyArId();
-    error InvalidParent(string parentHash);
+    error InvalidParent(string parentArId);
     error EmptyTargetArId();
     error InvalidTarget(string targetArId);
     error InvalidArtifactType();
@@ -253,14 +254,14 @@ contract AnchorRegistry {
         if (bytes(arId).length == 0)              revert EmptyArId();
         if (bytes(base.manifestHash).length == 0) revert EmptyManifestHash();
         if (registered[arId])                     revert AlreadyRegistered(arId);
-        if (bytes(base.parentHash).length > 0 && !registered[base.parentHash])
-                                                  revert InvalidParent(base.parentHash);
+        if (bytes(base.parentArId).length > 0 && !registered[base.parentArId])
+                                                  revert InvalidParent(base.parentArId);
     }
 
     function _register(string calldata arId, AnchorBase calldata base) internal {
         registered[arId] = true;
         anchorTypes[arId] = base.artifactType;
-        emit Anchored(arId, msg.sender, base.artifactType, base.descriptor, base.title, base.author, base.manifestHash, base.parentHash, base.treeId);
+        emit Anchored(arId, msg.sender, base.artifactType, arId, base.descriptor, base.title, base.author, base.manifestHash, base.parentArId, base.treeId);
     }
 
     function _validateTarget(string calldata targetArId) internal view {
@@ -274,12 +275,12 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER — CONTENT (types 0-12, 20, 21)
+    // REGISTER — CONTENT (types 0-13, 21, 22)
     // =========================================================================
 
     /// @notice Register any content, lifecycle, transaction, billing, or catch-all anchor.
     /// @param arId   Unique AR-ID for this anchor.
-    /// @param base   AnchorBase with artifactType, manifestHash, parentHash, etc.
+    /// @param base   AnchorBase with artifactType, manifestHash, parentArId, etc.
     /// @param extra  ABI-encoded type-specific fields (e.g. abi.encode(gitHash, license, language, version, url) for CODE).
     function registerContent(
         string calldata arId,
@@ -301,7 +302,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER — GATED (types 13-15)
+    // REGISTER — GATED (types 14-16)
     // =========================================================================
 
     /// @notice Register a gated anchor (LEGAL, ENTITY, or PROOF).
@@ -330,7 +331,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER — TARGETED (types 16-19)
+    // REGISTER — TARGETED (types 17-20)
     // =========================================================================
 
     /// @notice Register a targeted anchor (RETRACTION, REVIEW, VOID, or AFFIRMED).
