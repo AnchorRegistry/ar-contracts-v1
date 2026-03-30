@@ -9,24 +9,26 @@ import "forge-std/Test.sol";
 import "../src/AnchorRegistry.sol";
 
 /// @title  AnchorRegistryTest
-/// @notice Foundry test suite for AnchorRegistry.sol (22 artifact types).
+/// @notice Foundry test suite for AnchorRegistry.sol (23 artifact types).
 ///
 ///         Sections:
-///         1.  Content types (0-8) — CODE through ONCHAIN
-///         2.  Content types (9)   — REPORT
-///         3.  Content types (10)  — NOTE
-///         4.  Lifecycle types (11) — EVENT
-///         5.  Transaction types (12) — RECEIPT
-///         6.  Gated types (13-15) — LEGAL, ENTITY, PROOF
-///         7.  RETRACTION (type 16)
-///         8.  REVIEW, VOID, AFFIRMED (types 17-19)
-///         9.  BILLING (type 20) — ACCOUNT
-///         10. OTHER (type 21)
-///         11. Access control
-///         12. Edge cases & validation
-///         13. Tree integrity
-///         14. Anchored event & treeId
-///         15. Recovery & griefing defence
+///         1.  Content types (0-8)  — CODE through ONCHAIN
+///         2.  Content types (9)    — REPORT
+///         3.  Content types (10)   — NOTE
+///         4.  Content types (11)   — WEBSITE
+///         5.  Lifecycle types (12) — EVENT
+///         6.  Transaction types (13) — RECEIPT
+///         7.  Gated types (14-16) — LEGAL, ENTITY, PROOF
+///         8.  RETRACTION (type 17)
+///         9.  REVIEW, VOID, AFFIRMED (types 18-20)
+///         10. BILLING (type 21) — ACCOUNT
+///         11. OTHER (type 22)
+///         12. Access control
+///         13. Edge cases & validation
+///         14. Tree integrity
+///         15. Anchored event & treeId
+///         16. Recovery & griefing defence
+///         17. Account tree patterns
 
 contract AnchorRegistryTest is Test {
 
@@ -549,7 +551,13 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 4. LIFECYCLE TYPES (11) — EVENT
+    // 4. CONTENT TYPES (11) — WEBSITE
+    // =========================================================================
+    // Enum value verified in test_Report_EnumShift_AllTypesCorrect.
+    // Dedicated registration tests TBD.
+
+    // =========================================================================
+    // 5. LIFECYCLE TYPES (12) — EVENT
     // =========================================================================
 
     function test_Event_EnumValue_Is12() public pure {
@@ -828,7 +836,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 5. TRANSACTION TYPES (12) — RECEIPT
+    // 6. TRANSACTION TYPES (13) — RECEIPT
     // =========================================================================
 
     function test_Receipt_EnumValue_Is13() public pure {
@@ -972,7 +980,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 6. GATED TYPES (13-15) — suppressed at launch
+    // 7. GATED TYPES (14-16) — suppressed at launch
     // =========================================================================
 
     function test_Legal_SuppressedAtLaunch() public view {
@@ -1111,7 +1119,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 7. RETRACTION (type 16)
+    // 8. RETRACTION (type 17)
     // =========================================================================
 
     function test_Retraction_Succeeds() public {
@@ -1188,7 +1196,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 8. REVIEW, VOID, AFFIRMED (types 17-19)
+    // 9. REVIEW, VOID, AFFIRMED (types 18-20)
     // =========================================================================
 
     function test_Review_Succeeds() public {
@@ -1375,7 +1383,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 9. BILLING (type 20) — ACCOUNT
+    // 10. BILLING (type 21) — ACCOUNT
     // =========================================================================
 
     function test_Account_EnumValue_Is21() public pure {
@@ -1492,7 +1500,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 10. OTHER (type 21)
+    // 11. OTHER (type 22)
     // =========================================================================
 
     function test_RegisterOther() public {
@@ -1508,7 +1516,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 11. ACCESS CONTROL
+    // 12. ACCESS CONTROL
     // =========================================================================
 
     function test_OwnerAndRecoverySetOnDeploy() public view {
@@ -1578,7 +1586,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 12. EDGE CASES & VALIDATION
+    // 13. EDGE CASES & VALIDATION
     // =========================================================================
 
     function test_EmptyArId_Reverts() public {
@@ -1621,7 +1629,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 13. TREE INTEGRITY
+    // 14. TREE INTEGRITY
     // =========================================================================
 
     function test_ValidParentHash_Succeeds() public {
@@ -1722,7 +1730,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 14. ANCHORED EVENT & TREEID
+    // 15. ANCHORED EVENT & TREEID
     // =========================================================================
 
     function test_AR_TREE_ID_Constant() public view {
@@ -1868,7 +1876,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 15. RECOVERY & GRIEFING DEFENCE
+    // 16. RECOVERY & GRIEFING DEFENCE
     // =========================================================================
 
     function test_RecoveryInitiated() public {
@@ -1992,7 +2000,7 @@ contract AnchorRegistryTest is Test {
     }
 
     // =========================================================================
-    // 16. ACCOUNT TREE PATTERNS
+    // 17. ACCOUNT TREE PATTERNS
     // =========================================================================
     //
     // Two valid on-chain shapes. Enforcement that ACCOUNT only attaches to root
