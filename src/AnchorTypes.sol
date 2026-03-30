@@ -124,6 +124,7 @@ struct AgentAnchor {
 struct MediaAnchor {
     AnchorBase base;
     string mediaType;
+    string platform;   // e.g. "YouTube", "SoundCloud", "IPFS"
     string format;
     string duration;
     string isrc;
@@ -133,6 +134,7 @@ struct MediaAnchor {
 /// @notice TEXT — blogs, articles, books, essays.
 struct TextAnchor {
     AnchorBase base;
+    string textType;   // e.g. "BLOG", "BOOK", "ESSAY", "ARTICLE", "WHITEPAPER"
     string isbn;
     string publisher;
     string language;
@@ -170,6 +172,7 @@ struct ReportAnchor {
     string authors;
     string institution;
     string url;
+    string fileManifestHash; // SHA256 of the actual artifact file, empty if no file provided
 }
 
 /// @notice NOTE — memos, meeting notes, correspondence, observations, field notes.
@@ -179,6 +182,7 @@ struct NoteAnchor {
     string date;
     string participants;
     string url;
+    string fileManifestHash; // SHA256 of the actual artifact file, empty if no file provided
 }
 
 /// @notice WEBSITE — canonical domain presence for a project, creator, or entity.
@@ -220,6 +224,7 @@ struct ReceiptAnchor {
     string orderId;
     string platform;
     string url;
+    string fileManifestHash; // SHA256 of the actual artifact file, empty if no file provided
 }
 
 // =========================================================================
@@ -317,4 +322,5 @@ struct OtherAnchor {
     string platform;
     string url;
     string value;
+    string fileManifestHash; // SHA256 of the actual artifact file, empty if no file provided
 }
