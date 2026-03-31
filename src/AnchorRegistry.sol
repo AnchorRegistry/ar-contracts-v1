@@ -82,7 +82,7 @@ contract AnchorRegistry {
         string          author,
         string          manifestHash,
         string          parentArId,
-        string          treeId
+        string  indexed treeId
     );
 
     event Retracted(string indexed arId, string indexed targetArId, string replacedBy);

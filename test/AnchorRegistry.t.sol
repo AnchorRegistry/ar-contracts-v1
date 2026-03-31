@@ -356,7 +356,7 @@ contract AnchorRegistryTest is Test {
 
     function test_Report_AnchoredEvent_Emitted() public {
         vm.prank(operator);
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Anchored(
             "AR-RPT12", operator,
             ArtifactType.REPORT,
@@ -522,7 +522,7 @@ contract AnchorRegistryTest is Test {
 
     function test_Note_AnchoredEvent_Emitted() public {
         vm.prank(operator);
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Anchored(
             "AR-NOT11", operator,
             ArtifactType.NOTE,
@@ -811,7 +811,7 @@ contract AnchorRegistryTest is Test {
 
     function test_Event_AnchoredEvent_Emitted() public {
         vm.prank(operator);
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Anchored(
             "AR-EVN12", operator,
             ArtifactType.EVENT,
@@ -943,7 +943,7 @@ contract AnchorRegistryTest is Test {
 
     function test_Receipt_AnchoredEvent_Emitted() public {
         vm.prank(operator);
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Anchored(
             "AR-RCP10", operator,
             ArtifactType.RECEIPT,
@@ -1788,7 +1788,7 @@ contract AnchorRegistryTest is Test {
         );
         b.treeId = "sha256:my-tree-fingerprint";
         vm.prank(operator);
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Anchored(
             "AR-TID04", operator,
             ArtifactType.CODE,
@@ -1815,7 +1815,7 @@ contract AnchorRegistryTest is Test {
 
     function test_AnchoredEvent_OnRegisterCode() public {
         vm.prank(operator);
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Anchored(
             "AR-EVT01", operator,
             ArtifactType.CODE,
