@@ -11,34 +11,49 @@ import "../src/AnchorRegistry.sol";
 /// @notice Deploy AnchorRegistry to any network.
 /// @dev Usage:
 ///
-///   Sepolia (dry run):
-///   forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL -vvvv
+///   Sepolia dry run (Trezor):
+///   forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL \
+///     --ledger --sender $DEPLOYER_ADDRESS -vvvv
 ///
-///   Sepolia (broadcast):
-///   forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --verify -vvvv
+///   Sepolia broadcast + verify (Trezor):
+///   forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL \
+///     --broadcast --verify --ledger --sender $DEPLOYER_ADDRESS -vvvv
 ///
-///   Base mainnet (broadcast + verify):
-///   forge script script/Deploy.s.sol --rpc-url $BASE_RPC_URL --broadcast --verify -vvvv
+///   Local Anvil (private key):
+///   forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 ///
-///   Required env vars:
-///     DEPLOYER_PRIVATE_KEY   - owner wallet private key (hardware wallet recommended for mainnet)
-///     RECOVERY_ADDRESS       - cold storage address (never the same as deployer)
+///   Required env vars (Trezor / hardware wallet):
+///     DEPLOYER_ADDRESS       - Trezor address (becomes owner)
+///     RECOVERY_ADDRESS       - recovery address (may equal DEPLOYER_ADDRESS)
 ///     OPERATOR_ADDRESS       - hot wallet address for FastAPI backend
 ///     OPERATOR_BACKUP        - backup operator wallet address
 ///     SEPOLIA_RPC_URL        - Infura/Alchemy Sepolia endpoint
-///     BASE_RPC_URL           - Infura/Alchemy Base mainnet endpoint
 ///     ETHERSCAN_API_KEY      - for Sepolia verification
-///     BASESCAN_API_KEY       - for Base verification
+///
+///   Required env vars (local / CI — private key):
+///     DEPLOYER_PRIVATE_KEY   - fallback when DEPLOYER_ADDRESS is not set
+///     (all others above)
 
 contract Deploy is Script {
 
     function run() external {
-        uint256 deployerKey     = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        // Support both hardware wallet (DEPLOYER_ADDRESS + --ledger) and
+        // software wallet (DEPLOYER_PRIVATE_KEY) for local / CI use.
+        address deployer;
+        bool    usePrivateKey = vm.envOr("DEPLOYER_PRIVATE_KEY", bytes32(0)) != bytes32(0);
+
+        if (usePrivateKey) {
+            uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+            deployer = vm.addr(deployerKey);
+            vm.startBroadcast(deployerKey);
+        } else {
+            deployer = vm.envAddress("DEPLOYER_ADDRESS");
+            vm.startBroadcast(deployer);
+        }
+
         address recoveryAddress = vm.envAddress("RECOVERY_ADDRESS");
         address operatorAddress = vm.envAddress("OPERATOR_ADDRESS");
         address operatorBackup  = vm.envAddress("OPERATOR_BACKUP");
-
-        address deployer = vm.addr(deployerKey);
 
         console.log("=== AnchorRegistry Deployment ===");
         console.log("Network:          ", block.chainid == 84532 ? "Base Sepolia" : block.chainid == 8453 ? "Base Mainnet" : block.chainid == 11155111 ? "Sepolia" : "Unknown");
@@ -50,14 +65,11 @@ contract Deploy is Script {
         console.log("");
 
         // safety checks before broadcast
-        require(recoveryAddress != address(0),   "Deploy: recovery address is zero");
-        require(operatorAddress != address(0),   "Deploy: operator address is zero");
-        require(operatorBackup  != address(0),   "Deploy: backup operator is zero");
-        require(recoveryAddress != deployer,      "Deploy: recovery must differ from owner");
+        require(recoveryAddress != address(0),      "Deploy: recovery address is zero");
+        require(operatorAddress != address(0),      "Deploy: operator address is zero");
+        require(operatorBackup  != address(0),      "Deploy: backup operator is zero");
         require(operatorAddress != recoveryAddress, "Deploy: operator must differ from recovery");
         require(operatorBackup  != operatorAddress, "Deploy: backup must differ from primary operator");
-
-        vm.startBroadcast(deployerKey);
 
         AnchorRegistry registry = new AnchorRegistry(recoveryAddress);
 
