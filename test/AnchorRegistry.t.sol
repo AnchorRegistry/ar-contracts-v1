@@ -361,7 +361,7 @@ contract AnchorRegistryTest is Test {
             "AR-RPT12", operator,
             ArtifactType.REPORT,
             "AR-RPT12",
-            "HIVE-Q2-2026", "Test Artifact", "Test Author", "sha256:rpt12", "", ""
+            "HIVE-Q2-2026", "Test Artifact", "Test Author", "sha256:rpt12", "", "", ""
         );
         registry.registerContent("AR-RPT12",
             _base(ArtifactType.REPORT, "sha256:rpt12", "HIVE-Q2-2026"),
@@ -527,7 +527,7 @@ contract AnchorRegistryTest is Test {
             "AR-NOT11", operator,
             ArtifactType.NOTE,
             "AR-NOT11",
-            "KICKOFF-MEETING-NOTE", "Test Artifact", "Test Author", "sha256:not11", "", ""
+            "KICKOFF-MEETING-NOTE", "Test Artifact", "Test Author", "sha256:not11", "", "", ""
         );
         registry.registerContent("AR-NOT11",
             _base(ArtifactType.NOTE, "sha256:not11", "KICKOFF-MEETING-NOTE"),
@@ -816,7 +816,7 @@ contract AnchorRegistryTest is Test {
             "AR-EVN12", operator,
             ArtifactType.EVENT,
             "AR-EVN12",
-            "ANCHORREGISTRY-LAUNCH", "Test Artifact", "Test Author", "sha256:evn12", "", ""
+            "ANCHORREGISTRY-LAUNCH", "Test Artifact", "Test Author", "sha256:evn12", "", "", ""
         );
         registry.registerContent("AR-EVN12",
             _base(ArtifactType.EVENT, "sha256:evn12", "ANCHORREGISTRY-LAUNCH"),
@@ -948,7 +948,7 @@ contract AnchorRegistryTest is Test {
             "AR-RCP10", operator,
             ArtifactType.RECEIPT,
             "AR-RCP10",
-            "LAPTOP-BESTBUY-2026", "Test Artifact", "Test Author", "sha256:rcp10", "", ""
+            "LAPTOP-BESTBUY-2026", "Test Artifact", "Test Author", "sha256:rcp10", "", "", ""
         );
         registry.registerContent("AR-RCP10",
             _base(ArtifactType.RECEIPT, "sha256:rcp10", "LAPTOP-BESTBUY-2026"),
@@ -1794,10 +1794,31 @@ contract AnchorRegistryTest is Test {
             ArtifactType.CODE,
             "AR-TID04",
             "TREEID-EVENT-TEST", "Test Artifact", "Test Author",
-            "sha256:tid04", "", "sha256:my-tree-fingerprint"
+            "sha256:tid04", "", "sha256:my-tree-fingerprint", "sha256:my-tree-fingerprint"
         );
         registry.registerContent("AR-TID04", b,
             abi.encode("git:tid", "MIT", "Python", "v1.0.0", "https://test"));
+    }
+
+    // treeIdPlain must equal treeId (both emitted from base.treeId in _register)
+    function test_TreeIdPlain_MatchesTreeId_InEvent() public {
+        AnchorBase memory b = _base(
+            ArtifactType.CODE, "sha256:tidplain01", "TREEID-PLAIN-TEST"
+        );
+        b.treeId = "sha256:unique-tree-fingerprint";
+        vm.prank(operator);
+        vm.expectEmit(true, true, true, true);
+        emit AnchorRegistry.Anchored(
+            "AR-TIDP01", operator,
+            ArtifactType.CODE,
+            "AR-TIDP01",
+            "TREEID-PLAIN-TEST", "Test Artifact", "Test Author",
+            "sha256:tidplain01", "",
+            "sha256:unique-tree-fingerprint",  // indexed treeId (hashed as topic)
+            "sha256:unique-tree-fingerprint"   // treeIdPlain (readable in data)
+        );
+        registry.registerContent("AR-TIDP01", b,
+            abi.encode("git:tidp", "MIT", "Python", "v1.0.0", "https://test"));
     }
 
     function test_AR_TREE_ID_UsedForReviewAnchor() public {
@@ -1820,7 +1841,7 @@ contract AnchorRegistryTest is Test {
             "AR-EVT01", operator,
             ArtifactType.CODE,
             "AR-EVT01",
-            "ICMOORE-2026-TEST", "Test Artifact", "Ian Moore", "sha256:abc123", "", "tree:test-root"
+            "ICMOORE-2026-TEST", "Test Artifact", "Ian Moore", "sha256:abc123", "", "tree:test-root", "tree:test-root"
         );
         registry.registerContent("AR-EVT01", base,
             abi.encode("git:abc", "MIT", "TypeScript", "v1.0.0", "https://test"));

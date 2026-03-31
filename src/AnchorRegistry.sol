@@ -82,7 +82,8 @@ contract AnchorRegistry {
         string          author,
         string          manifestHash,
         string          parentArId,
-        string  indexed treeId
+        string  indexed treeId,
+        string          treeIdPlain
     );
 
     event Retracted(string indexed arId, string indexed targetArId, string replacedBy);
@@ -261,7 +262,7 @@ contract AnchorRegistry {
     function _register(string calldata arId, AnchorBase calldata base) internal {
         registered[arId] = true;
         anchorTypes[arId] = base.artifactType;
-        emit Anchored(arId, msg.sender, base.artifactType, arId, base.descriptor, base.title, base.author, base.manifestHash, base.parentArId, base.treeId);
+        emit Anchored(arId, msg.sender, base.artifactType, arId, base.descriptor, base.title, base.author, base.manifestHash, base.parentArId, base.treeId, base.treeId);
     }
 
     function _validateTarget(string calldata targetArId) internal view {
