@@ -344,15 +344,18 @@ contract AnchorRegistry {
     // =========================================================================
 
     /// @notice Register a targeted anchor (RETRACTION, REVIEW, VOID, or AFFIRMED).
-    /// @param arId       Unique AR-ID for this anchor.
-    /// @param base       AnchorBase with artifactType set to RETRACTION, REVIEW, VOID, or AFFIRMED.
-    /// @param targetArId The AR-ID being targeted (must exist).
-    /// @param extra      ABI-encoded type-specific fields.
+    /// @param arId            Unique AR-ID for this anchor.
+    /// @param base            AnchorBase with artifactType set to RETRACTION, REVIEW, VOID, or AFFIRMED.
+    /// @param targetArId      The AR-ID being targeted (must exist).
+    /// @param extra           ABI-encoded type-specific fields.
+    /// @param tokenCommitment SHA256(ownershipToken + arId) for RETRACTION (user-initiated).
+    ///                        Must be bytes32(0) for REVIEW, VOID, AFFIRMED (AR governance).
     function registerTargeted(
         string calldata arId,
         AnchorBase calldata base,
         string calldata targetArId,
-        bytes calldata extra
+        bytes calldata extra,
+        bytes32 tokenCommitment
     ) external onlyOperator {
         ArtifactType t = base.artifactType;
         if (t < ArtifactType.RETRACTION || t > ArtifactType.AFFIRMED)
@@ -362,9 +365,10 @@ contract AnchorRegistry {
         _validateTarget(targetArId);
 
         if (t == ArtifactType.RETRACTION) {
+            if (tokenCommitment == bytes32(0)) revert MissingTokenCommitment();
             (string memory reason, string memory replacedBy) = abi.decode(extra, (string, string));
             _anchorData[arId] = extra;
-            _register(arId, base, bytes32(0));
+            _register(arId, base, tokenCommitment);
             emit Retracted(arId, targetArId, replacedBy);
             // silence unused variable warning
             bytes(reason).length;

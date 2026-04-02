@@ -111,7 +111,7 @@ contract AnchorRegistryTest is Test {
         );
         b.parentArId = targetArId;
         vm.prank(operator);
-        registry.registerTargeted(reviewArId, b, targetArId, abi.encode("FALSE_AUTHORSHIP", "https://test"));
+        registry.registerTargeted(reviewArId, b, targetArId, abi.encode("FALSE_AUTHORSHIP", "https://test"), bytes32(0));
     }
 
     // =========================================================================
@@ -1223,7 +1223,7 @@ contract AnchorRegistryTest is Test {
         );
         b.parentArId = "AR-TARGET01";
         vm.prank(operator);
-        registry.registerTargeted("AR-RET01", b, "AR-TARGET01", abi.encode("Wrong file", ""));
+        registry.registerTargeted("AR-RET01", b, "AR-TARGET01", abi.encode("Wrong file", ""), bytes32(uint256(1)));
         assertTrue(registry.registered("AR-RET01"));
     }
 
@@ -1237,7 +1237,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Retracted("AR-RET02", "AR-V1", "AR-V2");
-        registry.registerTargeted("AR-RET02", b, "AR-V1", abi.encode("Superseded", "AR-V2"));
+        registry.registerTargeted("AR-RET02", b, "AR-V1", abi.encode("Superseded", "AR-V2"), bytes32(uint256(1)));
 
         (string memory reason, string memory retReplacedBy) = abi.decode(registry.getAnchorData("AR-RET02"), (string, string));
         assertEq(retReplacedBy, "AR-V2");
@@ -1251,7 +1251,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-MISSING"));
-        registry.registerTargeted("AR-RET03", b, "AR-MISSING", abi.encode("", ""));
+        registry.registerTargeted("AR-RET03", b, "AR-MISSING", abi.encode("", ""), bytes32(uint256(1)));
     }
 
     function test_Retraction_EmptyTarget_Reverts() public {
@@ -1260,7 +1260,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.EmptyTargetArId.selector);
-        registry.registerTargeted("AR-RET04", b, "", abi.encode("", ""));
+        registry.registerTargeted("AR-RET04", b, "", abi.encode("", ""), bytes32(uint256(1)));
     }
 
     function test_NodeSwap_ChildrenPreservedOnChain() public {
@@ -1284,7 +1284,7 @@ contract AnchorRegistryTest is Test {
         );
         retb.parentArId = "AR-V1";
         vm.prank(operator);
-        registry.registerTargeted("AR-RET", retb, "AR-V1", abi.encode("Superseded by V2", "AR-V2"));
+        registry.registerTargeted("AR-RET", retb, "AR-V1", abi.encode("Superseded by V2", "AR-V2"), bytes32(uint256(1)));
 
         (, string memory retReplacedBy) = abi.decode(registry.getAnchorData("AR-RET"), (string, string));
         assertEq(retReplacedBy, "AR-V2");
@@ -1305,7 +1305,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Reviewed("AR-REV01", "AR-RTARGET01", "FALSE_AUTHORSHIP", "https://test");
-        registry.registerTargeted("AR-REV01", b, "AR-RTARGET01", abi.encode("FALSE_AUTHORSHIP", "https://test"));
+        registry.registerTargeted("AR-REV01", b, "AR-RTARGET01", abi.encode("FALSE_AUTHORSHIP", "https://test"), bytes32(0));
         assertTrue(registry.registered("AR-REV01"));
     }
 
@@ -1315,7 +1315,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-MISSING"));
-        registry.registerTargeted("AR-REV02", b, "AR-MISSING", abi.encode("OTHER", "https://test"));
+        registry.registerTargeted("AR-REV02", b, "AR-MISSING", abi.encode("OTHER", "https://test"), bytes32(0));
     }
 
     function test_Review_EmptyTarget_Reverts() public {
@@ -1324,7 +1324,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(operator);
         vm.expectRevert(AnchorRegistry.EmptyTargetArId.selector);
-        registry.registerTargeted("AR-REV03", b, "", abi.encode("OTHER", "https://test"));
+        registry.registerTargeted("AR-REV03", b, "", abi.encode("OTHER", "https://test"), bytes32(0));
     }
 
     function test_Review_ByStranger_Reverts() public {
@@ -1334,7 +1334,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerTargeted("AR-REV04", b, "AR-RTARGET02", abi.encode("OTHER", "https://test"));
+        registry.registerTargeted("AR-REV04", b, "AR-RTARGET02", abi.encode("OTHER", "https://test"), bytes32(0));
     }
 
     function test_Void_Succeeds() public {
@@ -1346,7 +1346,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Voided("AR-VOID01", "AR-VTARGET01", "AR-REV-V01", "Fraud confirmed");
-        registry.registerTargeted("AR-VOID01", b, "AR-VTARGET01", abi.encode("AR-REV-V01", "https://test", "Fraud confirmed"));
+        registry.registerTargeted("AR-VOID01", b, "AR-VTARGET01", abi.encode("AR-REV-V01", "https://test", "Fraud confirmed"), bytes32(0));
         assertTrue(registry.registered("AR-VOID01"));
 
         (string memory vReviewArId, string memory vFindingUrl, string memory vEvidence) = abi.decode(registry.getAnchorData("AR-VOID01"), (string, string, string));
@@ -1362,7 +1362,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-MISSING"));
-        registry.registerTargeted("AR-VOID02", b, "AR-MISSING", abi.encode("AR-SOMEREVIEW", "https://test", "evidence"));
+        registry.registerTargeted("AR-VOID02", b, "AR-MISSING", abi.encode("AR-SOMEREVIEW", "https://test", "evidence"), bytes32(0));
     }
 
     function test_Void_NonExistentReviewArId_Reverts() public {
@@ -1372,7 +1372,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-NOREVIEW"));
-        registry.registerTargeted("AR-VOID03", b, "AR-VTARGET02", abi.encode("AR-NOREVIEW", "https://test", "evidence"));
+        registry.registerTargeted("AR-VOID03", b, "AR-VTARGET02", abi.encode("AR-NOREVIEW", "https://test", "evidence"), bytes32(0));
     }
 
     function test_Void_ByStranger_Reverts() public {
@@ -1382,7 +1382,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerTargeted("AR-VOID04", b, "AR-VTARGET03", abi.encode("AR-REV-V02", "https://test", "evidence"));
+        registry.registerTargeted("AR-VOID04", b, "AR-VTARGET03", abi.encode("AR-REV-V02", "https://test", "evidence"), bytes32(0));
     }
 
     function test_Affirmed_OnReview_Investigation() public {
@@ -1394,7 +1394,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Affirmed("AR-AFF01", "AR-REV-A01", "INVESTIGATION");
-        registry.registerTargeted("AR-AFF01", b, "AR-REV-A01", abi.encode("INVESTIGATION", "https://test"));
+        registry.registerTargeted("AR-AFF01", b, "AR-REV-A01", abi.encode("INVESTIGATION", "https://test"), bytes32(0));
         assertTrue(registry.registered("AR-AFF01"));
     }
 
@@ -1406,7 +1406,7 @@ contract AnchorRegistryTest is Test {
         );
         vb.parentArId = "AR-REV-A02";
         vm.prank(operator);
-        registry.registerTargeted("AR-VOID-A02", vb, "AR-ATARGET02", abi.encode("AR-REV-A02", "https://test", "evidence"));
+        registry.registerTargeted("AR-VOID-A02", vb, "AR-ATARGET02", abi.encode("AR-REV-A02", "https://test", "evidence"), bytes32(0));
 
         AnchorBase memory ab = _base(
             ArtifactType.AFFIRMED, "sha256:aff02", "AFFIRMED-VOID-A02"
@@ -1415,7 +1415,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Affirmed("AR-AFF02", "AR-VOID-A02", "APPEAL");
-        registry.registerTargeted("AR-AFF02", ab, "AR-VOID-A02", abi.encode("APPEAL", "https://test"));
+        registry.registerTargeted("AR-AFF02", ab, "AR-VOID-A02", abi.encode("APPEAL", "https://test"), bytes32(0));
 
         (string memory affAffirmedBy, string memory affFindingUrl) = abi.decode(registry.getAnchorData("AR-AFF02"), (string, string));
         assertEq(affAffirmedBy, "APPEAL");
@@ -1429,7 +1429,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-MISSING"));
-        registry.registerTargeted("AR-AFF03", b, "AR-MISSING", abi.encode("INVESTIGATION", "https://test"));
+        registry.registerTargeted("AR-AFF03", b, "AR-MISSING", abi.encode("INVESTIGATION", "https://test"), bytes32(0));
     }
 
     function test_Affirmed_ByStranger_Reverts() public {
@@ -1439,7 +1439,7 @@ contract AnchorRegistryTest is Test {
         );
         vm.prank(stranger);
         vm.expectRevert(AnchorRegistry.NotOperator.selector);
-        registry.registerTargeted("AR-AFF04", b, "AR-REV-A03", abi.encode("INVESTIGATION", "https://test"));
+        registry.registerTargeted("AR-AFF04", b, "AR-REV-A03", abi.encode("INVESTIGATION", "https://test"), bytes32(0));
     }
 
     function test_FullLifecycle_ReviewVoidAffirmedReopen() public {
@@ -1450,28 +1450,28 @@ contract AnchorRegistryTest is Test {
         );
         rb.parentArId = "AR-LC01";
         vm.prank(operator);
-        registry.registerTargeted("AR-LC-REV", rb, "AR-LC01", abi.encode("FALSE_AUTHORSHIP", "https://test"));
+        registry.registerTargeted("AR-LC-REV", rb, "AR-LC01", abi.encode("FALSE_AUTHORSHIP", "https://test"), bytes32(0));
 
         AnchorBase memory ab = _base(
             ArtifactType.AFFIRMED, "sha256:lc-aff", "AFFIRMED-LC01"
         );
         ab.parentArId = "AR-LC-REV";
         vm.prank(operator);
-        registry.registerTargeted("AR-LC-AFF", ab, "AR-LC-REV", abi.encode("INVESTIGATION", "https://test"));
+        registry.registerTargeted("AR-LC-AFF", ab, "AR-LC-REV", abi.encode("INVESTIGATION", "https://test"), bytes32(0));
 
         AnchorBase memory rb2 = _base(
             ArtifactType.REVIEW, "sha256:lc-rev2", "REVIEW-LC01-REOPEN"
         );
         rb2.parentArId = "AR-LC-AFF";
         vm.prank(operator);
-        registry.registerTargeted("AR-LC-REV2", rb2, "AR-LC01", abi.encode("MALICIOUS_TREE", "https://test"));
+        registry.registerTargeted("AR-LC-REV2", rb2, "AR-LC01", abi.encode("MALICIOUS_TREE", "https://test"), bytes32(0));
 
         AnchorBase memory vb = _base(
             ArtifactType.VOID, "sha256:lc-void", "VOID-LC01"
         );
         vb.parentArId = "AR-LC-REV2";
         vm.prank(operator);
-        registry.registerTargeted("AR-LC-VOID", vb, "AR-LC01", abi.encode("AR-LC-REV2", "https://test", "New evidence"));
+        registry.registerTargeted("AR-LC-VOID", vb, "AR-LC01", abi.encode("AR-LC-REV2", "https://test", "New evidence"), bytes32(0));
 
         assertTrue(registry.registered("AR-LC-REV"));
         assertTrue(registry.registered("AR-LC-AFF"));
@@ -1963,7 +1963,7 @@ contract AnchorRegistryTest is Test {
         b.parentArId = "AR-DISPUTE-TARGET";
         vm.prank(operator);
         registry.registerTargeted("AR-DISP-REV01", b,
-            "AR-DISPUTE-TARGET", abi.encode("FALSE_AUTHORSHIP", "https://anchorregistry.com/disputes/1"));
+            "AR-DISPUTE-TARGET", abi.encode("FALSE_AUTHORSHIP", "https://anchorregistry.com/disputes/1"), bytes32(0));
         assertTrue(registry.registered("AR-DISP-REV01"));
     }
 
@@ -1992,7 +1992,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Retracted("AR-EVT-RET01", "AR-EVT-T01", "AR-EVT-REP01");
-        registry.registerTargeted("AR-EVT-RET01", b, "AR-EVT-T01", abi.encode("superseded", "AR-EVT-REP01"));
+        registry.registerTargeted("AR-EVT-RET01", b, "AR-EVT-T01", abi.encode("superseded", "AR-EVT-REP01"), bytes32(uint256(1)));
     }
 
     function test_ReviewedEvent() public {
@@ -2004,7 +2004,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Reviewed("AR-EVT-REV01", "AR-EVT-DT01", "IMPERSONATION", "https://test");
-        registry.registerTargeted("AR-EVT-REV01", b, "AR-EVT-DT01", abi.encode("IMPERSONATION", "https://test"));
+        registry.registerTargeted("AR-EVT-REV01", b, "AR-EVT-DT01", abi.encode("IMPERSONATION", "https://test"), bytes32(0));
     }
 
     function test_VoidedEvent() public {
@@ -2016,7 +2016,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, true, true);
         emit AnchorRegistry.Voided("AR-EVT-VOID01", "AR-EVT-VT01", "AR-EVT-REV02", "evidence");
-        registry.registerTargeted("AR-EVT-VOID01", b, "AR-EVT-VT01", abi.encode("AR-EVT-REV02", "https://test", "evidence"));
+        registry.registerTargeted("AR-EVT-VOID01", b, "AR-EVT-VT01", abi.encode("AR-EVT-REV02", "https://test", "evidence"), bytes32(0));
     }
 
     function test_AffirmedEvent() public {
@@ -2028,7 +2028,7 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectEmit(true, true, false, true);
         emit AnchorRegistry.Affirmed("AR-EVT-AFF01", "AR-EVT-REV03", "INVESTIGATION");
-        registry.registerTargeted("AR-EVT-AFF01", b, "AR-EVT-REV03", abi.encode("INVESTIGATION", "https://test"));
+        registry.registerTargeted("AR-EVT-AFF01", b, "AR-EVT-REV03", abi.encode("INVESTIGATION", "https://test"), bytes32(0));
     }
 
     // =========================================================================
@@ -2518,12 +2518,21 @@ contract AnchorRegistryTest is Test {
         registry.registerContent("AR-TC-004", base, abi.encode("git:d", "MIT", "Rust", "v1.0", ""), commitment);
     }
 
-    function test_TokenCommitment_Targeted_IsZero() public {
+    function test_TokenCommitment_Retraction_StoredCorrectly() public {
+        bytes32 commitment = bytes32(uint256(0xdead));
         _code("AR-TC-TARGET", "sha256:tctarget");
         AnchorBase memory base = _base(ArtifactType.RETRACTION, "sha256:tcretract", "");
         vm.prank(operator);
-        registry.registerTargeted("AR-TC-RETRACT", base, "AR-TC-TARGET", abi.encode("test reason", ""));
-        assertEq(registry.tokenCommitments("AR-TC-RETRACT"), bytes32(0));
+        registry.registerTargeted("AR-TC-RETRACT", base, "AR-TC-TARGET", abi.encode("test reason", ""), commitment);
+        assertEq(registry.tokenCommitments("AR-TC-RETRACT"), commitment);
+    }
+
+    function test_TokenCommitment_Retraction_ZeroCommitment_Reverts() public {
+        _code("AR-TC-TARGET2", "sha256:tctarget2");
+        AnchorBase memory base = _base(ArtifactType.RETRACTION, "sha256:tcretract2", "");
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.MissingTokenCommitment.selector);
+        registry.registerTargeted("AR-TC-RETRACT2", base, "AR-TC-TARGET2", abi.encode("test reason", ""), bytes32(0));
     }
 
     function test_TokenCommitment_Governance_VOID_IsZero() public {
@@ -2531,7 +2540,7 @@ contract AnchorRegistryTest is Test {
         _code("AR-TC-VREVIEW", "sha256:tcvreview");
         AnchorBase memory base = _base(ArtifactType.VOID, "sha256:tcvoid", "");
         vm.prank(operator);
-        registry.registerTargeted("AR-TC-VOID", base, "AR-TC-VTARGET", abi.encode("AR-TC-VREVIEW", "https://finding.test", "evidence"));
+        registry.registerTargeted("AR-TC-VOID", base, "AR-TC-VTARGET", abi.encode("AR-TC-VREVIEW", "https://finding.test", "evidence"), bytes32(0));
         assertEq(registry.tokenCommitments("AR-TC-VOID"), bytes32(0));
     }
 

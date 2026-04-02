@@ -258,7 +258,7 @@ contract AnchorRegistryForkTest is Test {
             treeId:       "ar-operator-v1"
         });
         vm.prank(operatorPrimary);
-        registry.registerTargeted("AR-FORK-RETRACTION-001", retractBase, "AR-FORK-RETRACT-TARGET", abi.encode("Author requested removal", ""));
+        registry.registerTargeted("AR-FORK-RETRACTION-001", retractBase, "AR-FORK-RETRACT-TARGET", abi.encode("Author requested removal", ""), bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-RETRACTION-001"));
         assertEq(uint256(registry.anchorTypes("AR-FORK-RETRACTION-001")), uint256(ArtifactType.RETRACTION));
@@ -293,7 +293,7 @@ contract AnchorRegistryForkTest is Test {
             treeId:       "ar-operator-v1"
         });
         vm.prank(operatorPrimary);
-        registry.registerTargeted("AR-FORK-REVIEW-001", reviewBase, "AR-FORK-REVIEW-TARGET", abi.encode("FALSE_AUTHORSHIP", "https://evidence.test"));
+        registry.registerTargeted("AR-FORK-REVIEW-001", reviewBase, "AR-FORK-REVIEW-TARGET", abi.encode("FALSE_AUTHORSHIP", "https://evidence.test"), bytes32(0));
 
         // VOID
         AnchorBase memory voidBase = AnchorBase({
@@ -306,7 +306,7 @@ contract AnchorRegistryForkTest is Test {
             treeId:       "ar-operator-v1"
         });
         vm.prank(operatorPrimary);
-        registry.registerTargeted("AR-FORK-VOID-001", voidBase, "AR-FORK-REVIEW-TARGET", abi.encode("AR-FORK-REVIEW-001", "https://finding.test", "Confirmed false authorship"));
+        registry.registerTargeted("AR-FORK-VOID-001", voidBase, "AR-FORK-REVIEW-TARGET", abi.encode("AR-FORK-REVIEW-001", "https://finding.test", "Confirmed false authorship"), bytes32(0));
 
         // AFFIRMED
         AnchorBase memory affirmedBase = AnchorBase({
@@ -319,7 +319,7 @@ contract AnchorRegistryForkTest is Test {
             treeId:       "ar-operator-v1"
         });
         vm.prank(operatorPrimary);
-        registry.registerTargeted("AR-FORK-AFFIRMED-001", affirmedBase, "AR-FORK-VOID-001", abi.encode("INVESTIGATION", "https://affirmed.test"));
+        registry.registerTargeted("AR-FORK-AFFIRMED-001", affirmedBase, "AR-FORK-VOID-001", abi.encode("INVESTIGATION", "https://affirmed.test"), bytes32(0));
 
         assertTrue(registry.registered("AR-FORK-REVIEW-001"));
         assertTrue(registry.registered("AR-FORK-VOID-001"));
