@@ -147,7 +147,7 @@ contract SmokeTest is Script {
         console.log("  fileManifestHash =", rcpFmh, "<- NEW");
 
         // -- 7. OTHER — fileManifestHash field ----------------------------─
-        console.log("\n-- AR-SMK-OTHER (type 21) --");
+        console.log("\n-- AR-SMK-OTHER (type 22) --");
         reg.registerContent("AR-SMK-OTHER",
             _base(ArtifactType.OTHER, "sha256:smk-other", "SMK-OTHER"),
             abi.encode("course", "Thinkific", "https://thinkific.com/test",
@@ -160,6 +160,35 @@ contract SmokeTest is Script {
         require(keccak256(bytes(otherFmh)) == keccak256(bytes("sha256:other-manifest-jkl012")),
             "FAIL: other fileManifestHash mismatch");
         console.log("  fileManifestHash =", otherFmh, "<- NEW");
+
+        // -- 8. WEBSITE (type 11) -----------------------------------------
+        console.log("\n-- AR-SMK-WEBSITE (type 11) --");
+        reg.registerContent("AR-SMK-WEBSITE",
+            _base(ArtifactType.WEBSITE, "sha256:smk-website", "SMK-WEBSITE"),
+            abi.encode("https://anchorregistry.com", "custom", "On-chain provenance registry"),
+            bytes32(uint256(1)));
+        _check("AR-SMK-WEBSITE");
+        (string memory siteUrl, string memory sitePlatform, string memory siteDesc) =
+            abi.decode(reg.getAnchorData("AR-SMK-WEBSITE"), (string, string, string));
+        require(keccak256(bytes(siteUrl))      == keccak256(bytes("https://anchorregistry.com")), "FAIL: website url mismatch");
+        require(keccak256(bytes(sitePlatform)) == keccak256(bytes("custom")),                     "FAIL: website platform mismatch");
+        require(keccak256(bytes(siteDesc))     == keccak256(bytes("On-chain provenance registry")),"FAIL: website description mismatch");
+        console.log("  url      =", siteUrl);
+        console.log("  platform =", sitePlatform);
+        console.log("  desc     =", siteDesc, "<- NEW");
+
+        // -- 9. RETRACTION — tokenCommitment non-zero (type 17) -----------
+        console.log("\n-- AR-SMK-RETRACT (type 17) --");
+        bytes32 retCommitment = bytes32(uint256(0xdeadbeef));
+        AnchorBase memory retBase = _base(ArtifactType.RETRACTION, "sha256:smk-retract", "SMK-RETRACT");
+        retBase.parentArId = "AR-SMK-CODE";
+        reg.registerTargeted("AR-SMK-RETRACT", retBase, "AR-SMK-CODE",
+            abi.encode("superseded by new version", ""),
+            retCommitment);
+        _check("AR-SMK-RETRACT");
+        require(reg.tokenCommitments("AR-SMK-RETRACT") == retCommitment,
+            "FAIL: tokenCommitment mismatch");
+        console.log("  tokenCommitment stored correctly <- NEW");
 
         vm.stopBroadcast();
 
