@@ -64,13 +64,24 @@ def get_deployed_address():
 def abi_encode(sig, *values):
     return cast("abi-encode", sig, *values)
 
-def send(ar_id, base_tuple, encoded_data):
+def send(ar_id, base_tuple, encoded_data, token_commitment="0x0000000000000000000000000000000000000000000000000000000000000001"):
     cast(
         "send", REG,
-        "registerContent(string,(uint8,string,string,string,string,string,string),bytes)",
-        ar_id, base_tuple, encoded_data,
+        "registerContent(string,(uint8,string,string,string,string,string,string),bytes,bytes32)",
+        ar_id, base_tuple, encoded_data, token_commitment,
         "--private-key", OP_KEY, "--rpc-url", RPC,
     )
+
+def send_targeted(ar_id, base_tuple, target_ar_id, encoded_data, token_commitment="0x0000000000000000000000000000000000000000000000000000000000000000"):
+    cast(
+        "send", REG,
+        "registerTargeted(string,(uint8,string,string,string,string,string,string),string,bytes,bytes32)",
+        ar_id, base_tuple, target_ar_id, encoded_data, token_commitment,
+        "--private-key", OP_KEY, "--rpc-url", RPC,
+    )
+
+def token_commitment(ar_id):
+    return cast("call", REG, "tokenCommitments(string)(bytes32)", ar_id, "--rpc-url", RPC)
 
 def registered(ar_id):
     return cast("call", REG, "registered(string)(bool)", ar_id, "--rpc-url", RPC) == "true"
@@ -155,6 +166,13 @@ ANCHORS = [
         ["kind", "platform", "url", "value", "fileManifestHash"],
         ["fileManifestHash"],
     ),
+    (
+        "AR-SMOKE-WEBSITE", 11, "smoke-website", "SMOKE-WEBSITE", "Smoke Website",
+        "f(string,string,string)",
+        ["https://anchorregistry.com", "custom", "On-chain provenance registry"],
+        ["url", "platform", "description"],
+        ["url", "platform", "description"],
+    ),
 ]
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -213,6 +231,31 @@ for (ar_id, atype, hash_sfx, desc, title, enc_sig, enc_vals, labels, new_fields)
     except Exception as e:
         fail(f"getAnchorData() decode failed: {e}")
         errors += 1
+
+# ── RETRACTION — tokenCommitment must be stored ───────────────────────────────
+print(f"\n── AR-SMOKE-RETRACT (type 17) ──")
+RET_COMMITMENT = "0x00000000000000000000000000000000000000000000000000000000deadbeef"
+try:
+    retract_base = base(17, "smoke-retract", "SMOKE-RETRACT", "Smoke Retraction")
+    encoded = abi_encode("f(string,string)", "superseded by new version", "")
+    send_targeted("AR-SMOKE-RETRACT", retract_base, "AR-SMOKE-CODE", encoded, RET_COMMITMENT)
+    ok("registerTargeted() RETRACTION succeeded")
+except Exception as e:
+    fail(f"registerTargeted() failed: {e}")
+    errors += 1
+
+if registered("AR-SMOKE-RETRACT"):
+    ok("registered() == true")
+else:
+    fail("registered() returned false")
+    errors += 1
+
+stored = token_commitment("AR-SMOKE-RETRACT")
+if stored.lower() == RET_COMMITMENT.lower():
+    ok(f"tokenCommitment stored correctly: {stored}")
+else:
+    fail(f"tokenCommitment mismatch: got {stored}")
+    errors += 1
 
 print(f"\n{'='*60}")
 if errors == 0:
