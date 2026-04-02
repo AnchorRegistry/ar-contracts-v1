@@ -83,7 +83,8 @@ contract AnchorRegistry {
         string          manifestHash,
         string          parentArId,
         string  indexed treeId,
-        string          treeIdPlain
+        string          treeIdPlain,
+        bytes32         tokenCommitment
     );
 
     event Retracted(string indexed arId, string indexed targetArId, string replacedBy);
@@ -113,6 +114,7 @@ contract AnchorRegistry {
     error EmptyTargetArId();
     error InvalidTarget(string targetArId);
     error InvalidArtifactType();
+    error MissingTokenCommitment();
 
     // =========================================================================
     // ACCESS CONTROL MODIFIERS
@@ -238,6 +240,7 @@ contract AnchorRegistry {
     mapping(string => bytes)        private _anchorData;
     mapping(string => ArtifactType) public  anchorTypes;
     mapping(string => bool)         public  registered;
+    mapping(string => bytes32)      public  tokenCommitments;  // arId → SHA256(ownershipToken + childArId)
 
     // =========================================================================
     // GETTER
@@ -259,10 +262,11 @@ contract AnchorRegistry {
                                                   revert InvalidParent(base.parentArId);
     }
 
-    function _register(string calldata arId, AnchorBase calldata base) internal {
+    function _register(string calldata arId, AnchorBase calldata base, bytes32 tokenCommitment) internal {
         registered[arId] = true;
         anchorTypes[arId] = base.artifactType;
-        emit Anchored(arId, msg.sender, base.artifactType, arId, base.descriptor, base.title, base.author, base.manifestHash, base.parentArId, base.treeId, base.treeId);
+        tokenCommitments[arId] = tokenCommitment;
+        emit Anchored(arId, msg.sender, base.artifactType, arId, base.descriptor, base.title, base.author, base.manifestHash, base.parentArId, base.treeId, base.treeId, tokenCommitment);
     }
 
     function _validateTarget(string calldata targetArId) internal view {
@@ -286,8 +290,10 @@ contract AnchorRegistry {
     function registerContent(
         string calldata arId,
         AnchorBase calldata base,
-        bytes calldata extra
+        bytes calldata extra,
+        bytes32 tokenCommitment
     ) external onlyOperator {
+        if (tokenCommitment == bytes32(0)) revert MissingTokenCommitment();
         ArtifactType t = base.artifactType;
         if (t > ArtifactType.RECEIPT && t != ArtifactType.ACCOUNT && t != ArtifactType.OTHER)
             revert InvalidArtifactType();
@@ -299,7 +305,7 @@ contract AnchorRegistry {
 
         _validateBase(arId, base);
         _anchorData[arId] = extra;
-        _register(arId, base);
+        _register(arId, base, tokenCommitment);
     }
 
     // =========================================================================
@@ -313,8 +319,10 @@ contract AnchorRegistry {
     function registerGated(
         string calldata arId,
         AnchorBase calldata base,
-        bytes calldata extra
+        bytes calldata extra,
+        bytes32 tokenCommitment
     ) external {
+        if (tokenCommitment == bytes32(0)) revert MissingTokenCommitment();
         ArtifactType t = base.artifactType;
         if (t == ArtifactType.LEGAL) {
             if (!legalOperators[msg.sender]) revert NotLegalOperator();
@@ -328,7 +336,7 @@ contract AnchorRegistry {
 
         _validateBase(arId, base);
         _anchorData[arId] = extra;
-        _register(arId, base);
+        _register(arId, base, tokenCommitment);
     }
 
     // =========================================================================
@@ -356,20 +364,20 @@ contract AnchorRegistry {
         if (t == ArtifactType.RETRACTION) {
             (string memory reason, string memory replacedBy) = abi.decode(extra, (string, string));
             _anchorData[arId] = extra;
-            _register(arId, base);
+            _register(arId, base, bytes32(0));
             emit Retracted(arId, targetArId, replacedBy);
             // silence unused variable warning
             bytes(reason).length;
         } else if (t == ArtifactType.REVIEW) {
             (string memory reviewType, string memory evidenceUrl) = abi.decode(extra, (string, string));
             _anchorData[arId] = extra;
-            _register(arId, base);
+            _register(arId, base, bytes32(0));
             emit Reviewed(arId, targetArId, reviewType, evidenceUrl);
         } else if (t == ArtifactType.VOID) {
             (string memory reviewArId, string memory findingUrl, string memory evidence) = abi.decode(extra, (string, string, string));
             _validateTargetMem(reviewArId);
             _anchorData[arId] = extra;
-            _register(arId, base);
+            _register(arId, base, bytes32(0));
             emit Voided(arId, targetArId, reviewArId, evidence);
             // silence unused variable warning
             bytes(findingUrl).length;
@@ -377,7 +385,7 @@ contract AnchorRegistry {
             // AFFIRMED
             (string memory affirmedBy, string memory findingUrl) = abi.decode(extra, (string, string));
             _anchorData[arId] = extra;
-            _register(arId, base);
+            _register(arId, base, bytes32(0));
             emit Affirmed(arId, targetArId, affirmedBy);
             // silence unused variable warning
             bytes(findingUrl).length;
