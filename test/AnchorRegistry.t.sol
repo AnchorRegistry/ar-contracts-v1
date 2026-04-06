@@ -9,7 +9,7 @@ import "forge-std/Test.sol";
 import "../src/AnchorRegistry.sol";
 
 /// @title  AnchorRegistryTest
-/// @notice Foundry test suite for AnchorRegistry.sol (23 artifact types).
+/// @notice Foundry test suite for AnchorRegistry.sol (24 artifact types).
 ///
 ///         Sections:
 ///         1.  Content types (0-8)  — CODE through ONCHAIN
@@ -19,16 +19,17 @@ import "../src/AnchorRegistry.sol";
 ///         5.  Lifecycle types (12) — EVENT
 ///         6.  Transaction types (13) — RECEIPT
 ///         7.  Gated types (14-16) — LEGAL, ENTITY, PROOF
-///         8.  RETRACTION (type 17)
-///         9.  REVIEW, VOID, AFFIRMED (types 18-20)
-///         10. BILLING (type 21) — ACCOUNT
-///         11. OTHER (type 22)
+///         8.  RETRACTION (type 18)
+///         9.  REVIEW, VOID, AFFIRMED (types 19-21)
+///         10. BILLING (type 22) — ACCOUNT
+///         11. OTHER (type 23)
 ///         12. Access control
 ///         13. Edge cases & validation
 ///         14. Tree integrity
 ///         15. Anchored event & treeId
 ///         16. Recovery & griefing defence
 ///         17. Account tree patterns
+///         18. SEAL governance (type 17)
 
 contract AnchorRegistryTest is Test {
 
@@ -424,12 +425,13 @@ contract AnchorRegistryTest is Test {
         assertEq(uint8(ArtifactType.LEGAL),      14);
         assertEq(uint8(ArtifactType.ENTITY),     15);
         assertEq(uint8(ArtifactType.PROOF),      16);
-        assertEq(uint8(ArtifactType.RETRACTION), 17);
-        assertEq(uint8(ArtifactType.REVIEW),     18);
-        assertEq(uint8(ArtifactType.VOID),       19);
-        assertEq(uint8(ArtifactType.AFFIRMED),   20);
-        assertEq(uint8(ArtifactType.ACCOUNT),    21);
-        assertEq(uint8(ArtifactType.OTHER),      22);
+        assertEq(uint8(ArtifactType.SEAL),        17);
+        assertEq(uint8(ArtifactType.RETRACTION), 18);
+        assertEq(uint8(ArtifactType.REVIEW),     19);
+        assertEq(uint8(ArtifactType.VOID),       20);
+        assertEq(uint8(ArtifactType.AFFIRMED),   21);
+        assertEq(uint8(ArtifactType.ACCOUNT),    22);
+        assertEq(uint8(ArtifactType.OTHER),      23);
     }
 
     // =========================================================================
@@ -1483,8 +1485,8 @@ contract AnchorRegistryTest is Test {
     // 10. BILLING (type 21) — ACCOUNT
     // =========================================================================
 
-    function test_Account_EnumValue_Is21() public pure {
-        assertEq(uint8(ArtifactType.ACCOUNT), 21);
+    function test_Account_EnumValue_Is22() public pure {
+        assertEq(uint8(ArtifactType.ACCOUNT), 22);
     }
 
     function test_Account_HappyPath_Succeeds() public {
@@ -1619,8 +1621,8 @@ contract AnchorRegistryTest is Test {
         assertTrue(registry.registered("AR-OTH01"));
     }
 
-    function test_Other_EnumValue_Is22() public pure {
-        assertEq(uint8(ArtifactType.OTHER), 22);
+    function test_Other_EnumValue_Is23() public pure {
+        assertEq(uint8(ArtifactType.OTHER), 23);
     }
 
     // =========================================================================
@@ -2592,5 +2594,295 @@ contract AnchorRegistryTest is Test {
         bytes32 onChain = registry.tokenCommitments(arId);
         bytes32 recomputed = sha256(abi.encodePacked(ownershipToken, arId));
         assertEq(onChain, recomputed);
+    }
+
+    // =========================================================================
+    // 18. SEAL GOVERNANCE (type 17)
+    // =========================================================================
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    function _seal(string memory arId) internal {
+        vm.prank(operator);
+        registry.registerSeal(arId, "", "test seal", bytes32(uint256(0x5EA1)));
+    }
+
+    function _sealWithContinuation(string memory arId, string memory newRoot) internal {
+        vm.prank(operator);
+        registry.registerSeal(arId, newRoot, "lifecycle complete", bytes32(uint256(0x5EA1)));
+    }
+
+    // ── Core SEAL tests ──────────────────────────────────────────────────────
+
+    function test_Seal_Succeeds() public {
+        _code("AR-SEAL-ROOT", "sha256:sealroot");
+        _seal("AR-SEAL-ROOT");
+        assertTrue(registry.isSealed("AR-SEAL-ROOT"));
+    }
+
+    function test_Seal_RequiresTokenCommitment() public {
+        _code("AR-SEAL-TC", "sha256:sealtc");
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.MissingTokenCommitment.selector);
+        registry.registerSeal("AR-SEAL-TC", "", "reason", bytes32(0));
+    }
+
+    function test_Seal_BlocksNewContentAnchor() public {
+        _code("AR-SEAL-BLK", "sha256:sealblk");
+        _code("AR-SEAL-CHILD1", "sha256:child1");
+        // Register child1 under root before sealing (to have a child in tree)
+        // Actually, let's register a proper tree first
+        vm.prank(operator);
+        registry.registerContent(
+            "AR-SEAL-CHILD2",
+            _child("sha256:child2", "AR-SEAL-BLK"),
+            abi.encode("git:x", "MIT", "Rust", "v1.0", ""),
+            bytes32(uint256(1))
+        );
+        _seal("AR-SEAL-BLK");
+        // Now try to add a new child — should revert
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.TreeSealed.selector);
+        registry.registerContent(
+            "AR-SEAL-CHILD3",
+            _child("sha256:child3", "AR-SEAL-BLK"),
+            abi.encode("git:y", "MIT", "Rust", "v1.0", ""),
+            bytes32(uint256(1))
+        );
+    }
+
+    function test_Seal_BlocksNewGatedAnchor() public {
+        _code("AR-SEAL-GATED", "sha256:sealgated");
+        _seal("AR-SEAL-GATED");
+        vm.prank(owner);
+        registry.addLegalOperator(legalOp);
+        AnchorBase memory b = _base(ArtifactType.LEGAL, "sha256:legalseal", "LEGAL-SEAL");
+        b.parentArId = "AR-SEAL-GATED";
+        vm.prank(legalOp);
+        vm.expectRevert(AnchorRegistry.TreeSealed.selector);
+        registry.registerGated("AR-SEAL-LEGAL", b, abi.encode("contract", "https://legal.test"), bytes32(uint256(1)));
+    }
+
+    function test_Seal_BlocksRetraction() public {
+        _code("AR-SEAL-RTGT", "sha256:sealrtgt");
+        vm.prank(operator);
+        registry.registerContent(
+            "AR-SEAL-RCHILD",
+            _child("sha256:rchild", "AR-SEAL-RTGT"),
+            abi.encode("git:z", "MIT", "Rust", "v1.0", ""),
+            bytes32(uint256(1))
+        );
+        _seal("AR-SEAL-RTGT");
+        AnchorBase memory b = _base(ArtifactType.RETRACTION, "sha256:sealret", "RETRACT-SEALED");
+        b.parentArId = "AR-SEAL-RCHILD";
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.TreeSealed.selector);
+        registry.registerTargeted("AR-SEAL-RET", b, "AR-SEAL-RCHILD", abi.encode("reason", ""), bytes32(uint256(1)));
+    }
+
+    function test_Seal_BlockedUnderReview() public {
+        _code("AR-SEAL-REV", "sha256:sealrev");
+        // Put root under REVIEW
+        _code("AR-REVIEW-ANCHOR", "sha256:revanchor");
+        AnchorBase memory rb = _base(ArtifactType.REVIEW, "sha256:review01", "REVIEW-SEAL");
+        rb.parentArId = "AR-SEAL-REV";
+        vm.prank(operator);
+        registry.registerTargeted("AR-REVIEW01", rb, "AR-SEAL-REV", abi.encode("FALSE_CLAIM", "https://evidence.test"), bytes32(0));
+        // Now try to SEAL — should fail because root is under review
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.AnchorUnderReview.selector);
+        registry.registerSeal("AR-SEAL-REV", "", "reason", bytes32(uint256(0x5EA1)));
+    }
+
+    function test_Seal_BlockedIfVoided() public {
+        _code("AR-SEAL-VOID", "sha256:sealvoid");
+        // VOID the root: need a review anchor first
+        _code("AR-VOID-REVIEW", "sha256:voidreview");
+        AnchorBase memory rb = _base(ArtifactType.REVIEW, "sha256:vr01", "REVIEW");
+        rb.parentArId = "AR-SEAL-VOID";
+        vm.prank(operator);
+        registry.registerTargeted("AR-VR01", rb, "AR-SEAL-VOID", abi.encode("FALSE_CLAIM", "https://ev.test"), bytes32(0));
+        // Now VOID
+        AnchorBase memory vb = _base(ArtifactType.VOID, "sha256:void01", "VOID");
+        vb.parentArId = "AR-SEAL-VOID";
+        vm.prank(operator);
+        registry.registerTargeted("AR-VOID01", vb, "AR-SEAL-VOID", abi.encode("AR-VR01", "https://finding.test", "fraudulent"), bytes32(0));
+        // Now try to SEAL — should fail because root is voided
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.AnchorVoided.selector);
+        registry.registerSeal("AR-SEAL-VOID", "", "reason", bytes32(uint256(0x5EA1)));
+    }
+
+    function test_Seal_ContinuationPointer() public {
+        _code("AR-SEAL-CONT", "sha256:sealcont");
+        _sealWithContinuation("AR-SEAL-CONT", "AR-NEW-TREE-ROOT");
+        assertEq(registry.sealContinuation("AR-SEAL-CONT"), "AR-NEW-TREE-ROOT");
+    }
+
+    function test_Seal_CannotDoubleSeal() public {
+        _code("AR-SEAL-DBL", "sha256:sealdbl");
+        _seal("AR-SEAL-DBL");
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.AlreadySealed.selector);
+        registry.registerSeal("AR-SEAL-DBL", "", "second seal", bytes32(uint256(0x5EA1)));
+    }
+
+    function test_Seal_PreservesExistingAnchors() public {
+        _code("AR-SEAL-PRSV", "sha256:sealprsv");
+        vm.prank(operator);
+        registry.registerContent(
+            "AR-SEAL-PCHILD",
+            _child("sha256:pchild", "AR-SEAL-PRSV"),
+            abi.encode("git:p", "MIT", "Go", "v1.0", ""),
+            bytes32(uint256(1))
+        );
+        _seal("AR-SEAL-PRSV");
+        // Existing anchors still readable
+        assertTrue(registry.registered("AR-SEAL-PRSV"));
+        assertTrue(registry.registered("AR-SEAL-PCHILD"));
+        assertEq(uint8(registry.anchorTypes("AR-SEAL-PRSV")), uint8(ArtifactType.CODE));
+        assertEq(uint8(registry.anchorTypes("AR-SEAL-PCHILD")), uint8(ArtifactType.CODE));
+    }
+
+    function test_Seal_OnlyRoot() public {
+        _code("AR-SEAL-NOROOT", "sha256:sealnoroot");
+        vm.prank(operator);
+        registry.registerContent(
+            "AR-SEAL-NRCHILD",
+            _child("sha256:nrchild", "AR-SEAL-NOROOT"),
+            abi.encode("git:nr", "MIT", "Rust", "v1.0", ""),
+            bytes32(uint256(1))
+        );
+        // Try to seal a child — should revert
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.NotTreeRoot.selector);
+        registry.registerSeal("AR-SEAL-NRCHILD", "", "reason", bytes32(uint256(0x5EA1)));
+    }
+
+    // ── AR governance within sealed tree ──────────────────────────────────────
+
+    function test_Seal_VoidOperatesWithinSealedTree() public {
+        _code("AR-SEAL-GV", "sha256:sealgv");
+        vm.prank(operator);
+        registry.registerContent(
+            "AR-SEAL-GVCHILD",
+            _child("sha256:gvchild", "AR-SEAL-GV"),
+            abi.encode("git:gv", "MIT", "Rust", "v1.0", ""),
+            bytes32(uint256(1))
+        );
+        _seal("AR-SEAL-GV");
+        // AR registers REVIEW on child within sealed tree
+        AnchorBase memory rb = _base(ArtifactType.REVIEW, "sha256:gvreview", "REVIEW-GV");
+        rb.parentArId = "AR-SEAL-GVCHILD";
+        vm.prank(operator);
+        registry.registerTargeted("AR-GV-REV", rb, "AR-SEAL-GVCHILD", abi.encode("FALSE_CLAIM", "https://ev.test"), bytes32(0));
+        // AR VOIDs child within sealed tree
+        AnchorBase memory vb = _base(ArtifactType.VOID, "sha256:gvvoid", "VOID-GV");
+        vb.parentArId = "AR-SEAL-GVCHILD";
+        vm.prank(operator);
+        registry.registerTargeted("AR-GV-VOID", vb, "AR-SEAL-GVCHILD", abi.encode("AR-GV-REV", "https://finding.test", "fraudulent"), bytes32(0));
+        assertTrue(registry.registered("AR-GV-VOID"));
+        assertTrue(registry.voided("AR-SEAL-GVCHILD"));
+    }
+
+    function test_Seal_ReviewOperatesWithinSealedTree() public {
+        _code("AR-SEAL-RV", "sha256:sealrv");
+        _seal("AR-SEAL-RV");
+        // AR registers REVIEW on root within sealed tree
+        AnchorBase memory rb = _base(ArtifactType.REVIEW, "sha256:rvreview", "REVIEW-RV");
+        rb.parentArId = "AR-SEAL-RV";
+        vm.prank(operator);
+        registry.registerTargeted("AR-RV-REV", rb, "AR-SEAL-RV", abi.encode("INVESTIGATION", "https://ev.test"), bytes32(0));
+        assertTrue(registry.registered("AR-RV-REV"));
+        assertTrue(registry.reviewed("AR-SEAL-RV"));
+    }
+
+    function test_Seal_AffirmedOperatesWithinSealedTree() public {
+        _code("AR-SEAL-AF", "sha256:sealaf");
+        _seal("AR-SEAL-AF");
+        // AR registers AFFIRMED on root within sealed tree
+        AnchorBase memory ab = _base(ArtifactType.AFFIRMED, "sha256:afaffirm", "AFFIRMED-AF");
+        ab.parentArId = "AR-SEAL-AF";
+        vm.prank(operator);
+        registry.registerTargeted("AR-AF-AFF", ab, "AR-SEAL-AF", abi.encode("AR governance", "https://finding.test"), bytes32(0));
+        assertTrue(registry.registered("AR-AF-AFF"));
+    }
+
+    // ── treeRoot mapping tests ───────────────────────────────────────────────
+
+    function test_TreeRoot_SetForRootAnchor() public {
+        _code("AR-TR-ROOT", "sha256:trroot");
+        assertEq(registry.treeRoot("AR-TR-ROOT"), "AR-TR-ROOT");
+    }
+
+    function test_TreeRoot_InheritedByChild() public {
+        _code("AR-TR-PARENT", "sha256:trparent");
+        vm.prank(operator);
+        registry.registerContent(
+            "AR-TR-CHILD",
+            _child("sha256:trchild", "AR-TR-PARENT"),
+            abi.encode("git:tr", "MIT", "Rust", "v1.0", ""),
+            bytes32(uint256(1))
+        );
+        assertEq(registry.treeRoot("AR-TR-CHILD"), "AR-TR-PARENT");
+    }
+
+    function test_TreeRoot_InheritedDeep() public {
+        _code("AR-TR-DEEP", "sha256:trdeep");
+        vm.prank(operator);
+        registry.registerContent(
+            "AR-TR-MID",
+            _child("sha256:trmid", "AR-TR-DEEP"),
+            abi.encode("git:m", "MIT", "Rust", "v1.0", ""),
+            bytes32(uint256(1))
+        );
+        vm.prank(operator);
+        registry.registerContent(
+            "AR-TR-LEAF",
+            _child("sha256:trleaf", "AR-TR-MID"),
+            abi.encode("git:l", "MIT", "Rust", "v1.0", ""),
+            bytes32(uint256(1))
+        );
+        assertEq(registry.treeRoot("AR-TR-LEAF"), "AR-TR-DEEP");
+    }
+
+    // ── voided/reviewed mapping tests ────────────────────────────────────────
+
+    function test_VoidedMapping_SetOnVoid() public {
+        _code("AR-VM-TARGET", "sha256:vmtarget");
+        _code("AR-VM-REVIEW", "sha256:vmreview");
+        AnchorBase memory rb = _base(ArtifactType.REVIEW, "sha256:vmrev", "REVIEW");
+        rb.parentArId = "AR-VM-TARGET";
+        vm.prank(operator);
+        registry.registerTargeted("AR-VM-REV", rb, "AR-VM-TARGET", abi.encode("FALSE_CLAIM", "https://ev.test"), bytes32(0));
+        AnchorBase memory vb = _base(ArtifactType.VOID, "sha256:vmvoid", "VOID");
+        vb.parentArId = "AR-VM-TARGET";
+        vm.prank(operator);
+        registry.registerTargeted("AR-VM-VOID", vb, "AR-VM-TARGET", abi.encode("AR-VM-REV", "https://finding.test", "evidence"), bytes32(0));
+        assertTrue(registry.voided("AR-VM-TARGET"));
+    }
+
+    function test_ReviewedMapping_SetOnReview() public {
+        _code("AR-RM-TARGET", "sha256:rmtarget");
+        AnchorBase memory rb = _base(ArtifactType.REVIEW, "sha256:rmrev", "REVIEW");
+        rb.parentArId = "AR-RM-TARGET";
+        vm.prank(operator);
+        registry.registerTargeted("AR-RM-REV", rb, "AR-RM-TARGET", abi.encode("INVESTIGATION", "https://ev.test"), bytes32(0));
+        assertTrue(registry.reviewed("AR-RM-TARGET"));
+    }
+
+    // ── Access control ───────────────────────────────────────────────────────
+
+    function test_Seal_OnlyOperator() public {
+        _code("AR-SEAL-ACL", "sha256:sealacl");
+        vm.prank(stranger);
+        vm.expectRevert(AnchorRegistry.NotOperator.selector);
+        registry.registerSeal("AR-SEAL-ACL", "", "reason", bytes32(uint256(0x5EA1)));
+    }
+
+    function test_Seal_NonexistentAnchor() public {
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-DOESNT-EXIST"));
+        registry.registerSeal("AR-DOESNT-EXIST", "", "reason", bytes32(uint256(0x5EA1)));
     }
 }

@@ -39,19 +39,20 @@ enum ArtifactType {
     ENTITY,      // 15
     PROOF,       // 16
 
-    // ── SELF-SERVICE (17) ─────────────────────────────────────────────
-    RETRACTION,  // 17
+    // ── SELF-SERVICE (17-18) ──────────────────────────────────────────
+    SEAL,        // 17
+    RETRACTION,  // 18
 
-    // ── REVIEW (18-20) ────────────────────────────────────────────────
-    REVIEW,      // 18
-    VOID,        // 19
-    AFFIRMED,    // 20
+    // ── REVIEW (19-21) ────────────────────────────────────────────────
+    REVIEW,      // 19
+    VOID,        // 20
+    AFFIRMED,    // 21
 
-    // ── BILLING (21) ──────────────────────────────────────────────────
-    ACCOUNT,     // 21
+    // ── BILLING (22) ──────────────────────────────────────────────────
+    ACCOUNT,     // 22
 
-    // ── CATCH-ALL (22) ────────────────────────────────────────────────
-    OTHER        // 22
+    // ── CATCH-ALL (23) ────────────────────────────────────────────────
+    OTHER        // 23
 }
 
 // =========================================================================
@@ -267,8 +268,17 @@ struct ProofAnchor {
 }
 
 // =========================================================================
-// SELF-SERVICE STRUCT — type 17
+// SELF-SERVICE STRUCTS — types 17-18
 // =========================================================================
+
+/// @notice SEAL — marks a provenance tree as authentic and complete.
+///         Record preserved in full. No new anchors may be appended.
+///         Key may be safely destroyed after sealing.
+struct SealAnchor {
+    AnchorBase base;
+    string newTreeRoot;
+    string reason;
+}
 
 struct RetractionAnchor {
     AnchorBase base;
@@ -278,7 +288,7 @@ struct RetractionAnchor {
 }
 
 // =========================================================================
-// REVIEW STRUCTS — types 18-20
+// REVIEW STRUCTS — types 19-21
 // =========================================================================
 
 struct ReviewAnchor {
@@ -304,7 +314,7 @@ struct AffirmedAnchor {
 }
 
 // =========================================================================
-// BILLING STRUCT — type 21
+// BILLING STRUCT — type 22
 // =========================================================================
 
 struct AccountAnchor {
@@ -313,7 +323,7 @@ struct AccountAnchor {
 }
 
 // =========================================================================
-// CATCH-ALL STRUCT — type 22
+// CATCH-ALL STRUCT — type 23
 // =========================================================================
 
 struct OtherAnchor {

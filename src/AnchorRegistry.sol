@@ -12,21 +12,22 @@ import "./AnchorTypes.sol";
 ///         Immutable record of what existed, when, and who registered it.
 /// @dev    Deployed once on Base (Ethereum L2). Cannot be modified post-deployment.
 ///
-///         Twenty-three artifact types in eight logical groups:
+///         Twenty-four artifact types in eight logical groups:
 ///
-///         CONTENT (0-11):    CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN, REPORT, NOTE, WEBSITE
-///         LIFECYCLE (12):    EVENT
-///         TRANSACTION (13):  RECEIPT
-///         GATED (14-16):     LEGAL, ENTITY, PROOF
-///         SELF-SERVICE (17): RETRACTION
-///         REVIEW (18-20):    REVIEW, VOID, AFFIRMED
-///         BILLING (21):      ACCOUNT
-///         CATCH-ALL (22):    OTHER
+///         CONTENT (0-11):      CODE, RESEARCH, DATA, MODEL, AGENT, MEDIA, TEXT, POST, ONCHAIN, REPORT, NOTE, WEBSITE
+///         LIFECYCLE (12):      EVENT
+///         TRANSACTION (13):    RECEIPT
+///         GATED (14-16):       LEGAL, ENTITY, PROOF
+///         SELF-SERVICE (17-18): SEAL, RETRACTION
+///         REVIEW (19-21):      REVIEW, VOID, AFFIRMED
+///         BILLING (22):        ACCOUNT
+///         CATCH-ALL (23):      OTHER
 ///
-///         Three register entry points:
-///         registerContent(arId, base, extra)   — types 0-13, 21, 22 (onlyOperator)
+///         Four register entry points:
+///         registerContent(arId, base, extra)   — types 0-13, 22, 23 (onlyOperator)
 ///         registerGated(arId, base, extra)     — types 14-16 (onlyLegal/Entity/ProofOperator)
-///         registerTargeted(arId, base, targetArId, extra) — types 17-20 (onlyOperator)
+///         registerTargeted(arId, base, targetArId, extra) — types 18-21 (onlyOperator)
+///         registerSeal(arId, newTreeRoot, reason, tokenCommitment) — type 17 (onlyOperator, client authority)
 
 contract AnchorRegistry {
 
@@ -87,6 +88,14 @@ contract AnchorRegistry {
         bytes32         tokenCommitment
     );
 
+    event Sealed(
+        string indexed arId,
+        string  newTreeRoot,
+        string  reason,
+        uint256 sealedAtBlock,
+        bytes32 tokenCommitment
+    );
+
     event Retracted(string indexed arId, string indexed targetArId, string replacedBy);
     event Reviewed(string indexed arId, string indexed targetArId, string reviewType, string evidenceUrl);
     event Voided(string indexed arId, string indexed targetArId, string indexed reviewArId, string evidence);
@@ -115,6 +124,11 @@ contract AnchorRegistry {
     error InvalidTarget(string targetArId);
     error InvalidArtifactType();
     error MissingTokenCommitment();
+    error TreeSealed();
+    error AlreadySealed();
+    error AnchorVoided();
+    error AnchorUnderReview();
+    error NotTreeRoot();
 
     // =========================================================================
     // ACCESS CONTROL MODIFIERS
@@ -127,6 +141,13 @@ contract AnchorRegistry {
 
     modifier onlyOperator() {
         if (!operators[msg.sender]) revert NotOperator();
+        _;
+    }
+
+    modifier notSealed(string calldata parentArId) {
+        if (bytes(parentArId).length > 0) {
+            if (isSealed[treeRoot[parentArId]]) revert TreeSealed();
+        }
         _;
     }
 
@@ -241,6 +262,11 @@ contract AnchorRegistry {
     mapping(string => ArtifactType) public  anchorTypes;
     mapping(string => bool)         public  registered;
     mapping(string => bytes32)      public  tokenCommitments;  // arId → SHA256(ownershipToken + childArId)
+    mapping(string => bool)         public  isSealed;            // arId → true if tree root is sealed
+    mapping(string => string)       public  sealContinuation;  // arId → newTreeRoot (optional continuation pointer)
+    mapping(string => string)       public  treeRoot;          // arId → root arId of its tree
+    mapping(string => bool)         public  voided;            // arId → true if anchor has been VOIDed
+    mapping(string => bool)         public  reviewed;          // arId → true if anchor is under REVIEW
 
     // =========================================================================
     // GETTER
@@ -266,6 +292,11 @@ contract AnchorRegistry {
         registered[arId] = true;
         anchorTypes[arId] = base.artifactType;
         tokenCommitments[arId] = tokenCommitment;
+        if (bytes(base.parentArId).length == 0) {
+            treeRoot[arId] = arId;
+        } else {
+            treeRoot[arId] = treeRoot[base.parentArId];
+        }
         emit Anchored(arId, msg.sender, base.artifactType, arId, base.descriptor, base.title, base.author, base.manifestHash, base.parentArId, base.treeId, base.treeId, tokenCommitment);
     }
 
@@ -280,7 +311,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER — CONTENT (types 0-13, 21, 22)
+    // REGISTER — CONTENT (types 0-13, 22, 23)
     // =========================================================================
 
     /// @notice Register any content, lifecycle, transaction, billing, or catch-all anchor.
@@ -292,7 +323,7 @@ contract AnchorRegistry {
         AnchorBase calldata base,
         bytes calldata extra,
         bytes32 tokenCommitment
-    ) external onlyOperator {
+    ) external onlyOperator notSealed(base.parentArId) {
         if (tokenCommitment == bytes32(0)) revert MissingTokenCommitment();
         ArtifactType t = base.artifactType;
         if (t > ArtifactType.RECEIPT && t != ArtifactType.ACCOUNT && t != ArtifactType.OTHER)
@@ -321,7 +352,7 @@ contract AnchorRegistry {
         AnchorBase calldata base,
         bytes calldata extra,
         bytes32 tokenCommitment
-    ) external {
+    ) external notSealed(base.parentArId) {
         if (tokenCommitment == bytes32(0)) revert MissingTokenCommitment();
         ArtifactType t = base.artifactType;
         if (t == ArtifactType.LEGAL) {
@@ -340,7 +371,7 @@ contract AnchorRegistry {
     }
 
     // =========================================================================
-    // REGISTER — TARGETED (types 17-20)
+    // REGISTER — TARGETED (types 18-21)
     // =========================================================================
 
     /// @notice Register a targeted anchor (RETRACTION, REVIEW, VOID, or AFFIRMED).
@@ -365,6 +396,8 @@ contract AnchorRegistry {
         _validateTarget(targetArId);
 
         if (t == ArtifactType.RETRACTION) {
+            // SEAL blocks new retractions — client cannot retract within a sealed tree
+            if (bytes(base.parentArId).length > 0 && isSealed[treeRoot[base.parentArId]]) revert TreeSealed();
             if (tokenCommitment == bytes32(0)) revert MissingTokenCommitment();
             (string memory reason, string memory replacedBy) = abi.decode(extra, (string, string));
             _anchorData[arId] = extra;
@@ -376,12 +409,14 @@ contract AnchorRegistry {
             (string memory reviewType, string memory evidenceUrl) = abi.decode(extra, (string, string));
             _anchorData[arId] = extra;
             _register(arId, base, bytes32(0));
+            reviewed[targetArId] = true;
             emit Reviewed(arId, targetArId, reviewType, evidenceUrl);
         } else if (t == ArtifactType.VOID) {
             (string memory reviewArId, string memory findingUrl, string memory evidence) = abi.decode(extra, (string, string, string));
             _validateTargetMem(reviewArId);
             _anchorData[arId] = extra;
             _register(arId, base, bytes32(0));
+            voided[targetArId] = true;
             emit Voided(arId, targetArId, reviewArId, evidence);
             // silence unused variable warning
             bytes(findingUrl).length;
@@ -394,5 +429,36 @@ contract AnchorRegistry {
             // silence unused variable warning
             bytes(findingUrl).length;
         }
+    }
+
+    // =========================================================================
+    // SEAL (type 17) — client authority only
+    // =========================================================================
+
+    /// @notice Seal a provenance tree — authentic and complete.
+    ///         No new anchors may be appended after sealing.
+    ///         AR governance (VOID, REVIEW, AFFIRMED) can still target anchors within sealed trees.
+    ///         SEAL is permanent and cannot be reversed by anyone including AnchorRegistry.
+    /// @param arId             The root AR-ID of the tree to seal (must be a tree root).
+    /// @param newTreeRoot      Optional continuation pointer to a new tree root.
+    /// @param reason           Human-readable reason for sealing.
+    /// @param tokenCommitment  H(K ∥ C_seal) — must be non-zero (client-initiated action).
+    function registerSeal(
+        string calldata arId,
+        string calldata newTreeRoot,
+        string calldata reason,
+        bytes32 tokenCommitment
+    ) external onlyOperator {
+        if (!registered[arId])                                          revert InvalidTarget(arId);
+        if (isSealed[arId])                                               revert AlreadySealed();
+        if (voided[arId])                                               revert AnchorVoided();
+        if (reviewed[arId])                                             revert AnchorUnderReview();
+        if (tokenCommitment == bytes32(0))                              revert MissingTokenCommitment();
+        if (keccak256(bytes(treeRoot[arId])) != keccak256(bytes(arId))) revert NotTreeRoot();
+
+        isSealed[arId] = true;
+        sealContinuation[arId] = newTreeRoot;
+
+        emit Sealed(arId, newTreeRoot, reason, block.number, tokenCommitment);
     }
 }
