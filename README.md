@@ -33,7 +33,8 @@ AnchorRegistry is immutable provenance infrastructure for the AI era. Any creato
 are formally described in:
 
 **Trustless Provenance Trees: A Game-Theoretic Framework for Operator-Gated Blockchain Registries**
-Ian C. Moore — *arXiv:2604.03434 [cs.GT], April 2026*
+Ian C. Moore — *arXiv:2604.03434 [cs.GT, cs.CR], April 2026*
+
 🔗 https://arxiv.org/abs/2604.03434
 
 ---
