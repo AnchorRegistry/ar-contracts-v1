@@ -27,6 +27,17 @@ AnchorRegistry is immutable provenance infrastructure for the AI era. Any creato
 
 ---
 
+## Research
+
+🎓 The cryptographic commitment scheme and security proofs underlying this implementation
+are formally described in:
+
+**Trustless Provenance Trees: A Game-Theoretic Framework for Operator-Gated Blockchain Registries**
+Ian C. Moore — *arXiv:2604.03434 [cs.GT], April 2026*
+🔗 https://arxiv.org/abs/2604.03434
+
+---
+
 ## Live Deployment — Sepolia
 
 AnchorRegistry is deployed and verified on Ethereum Sepolia at [`0x488ab4Aa772Fca36e45e1CB7223f859d2d1CFF36`](https://sepolia.etherscan.io/address/0x488ab4aa772fca36e45e1cb7223f859d2d1cff36). 179 unit tests and 24 fork tests pass against the live contract. See [DEPLOYMENTS.md](DEPLOYMENTS.md) for full details.
@@ -105,23 +116,23 @@ forge script script/Deploy.s.sol \
 
 ### Artifact Types
 
-22 artifact types in 8 logical groups:
+23 artifact types in 8 logical groups:
 
 | Group | Types | Enum | Description |
 |-------|-------|------|-------------|
-| **CONTENT** | `CODE`, `RESEARCH`, `DATA`, `MODEL`, `AGENT`, `MEDIA`, `TEXT`, `POST`, `ONCHAIN`, `REPORT`, `NOTE` | 0–10 | What creators make. Active at launch. `onlyOperator`. |
-| **LIFECYCLE** | `EVENT` | 11 | Human events and machine/agent processes. Active at launch. `onlyOperator`. |
-| **TRANSACTION** | `RECEIPT` | 12 | Proof of commercial, medical, financial, government, event, or service transactions. Active at launch. `onlyOperator`. |
-| **GATED** | `LEGAL`, `ENTITY`, `PROOF` | 13–15 | Suppressed at launch. Separate operator gates. |
-| **SELF-SERVICE** | `RETRACTION` | 16 | Owner-initiated. Active at launch. Operator submits on behalf of creator after ownership token verification. |
-| **REVIEW** | `REVIEW`, `VOID`, `AFFIRMED` | 17–19 | AnchorRegistry operator-only. Active at launch. |
-| **BILLING** | `ACCOUNT` | 20 | Prepaid registration capacity. Active at launch. `onlyOperator`. |
-| **CATCH-ALL** | `OTHER` | 21 | Everything else. |
+| **CONTENT** | `CODE`, `RESEARCH`, `DATA`, `MODEL`, `AGENT`, `MEDIA`, `TEXT`, `POST`, `ONCHAIN`, `REPORT`, `NOTE`, `WEBSITE` | 0–11 | What creators make. Active at launch. `onlyOperator`. |
+| **LIFECYCLE** | `EVENT` | 12 | Human events and machine/agent processes. Active at launch. `onlyOperator`. |
+| **TRANSACTION** | `RECEIPT` | 13 | Proof of commercial, medical, financial, government, event, or service transactions. Active at launch. `onlyOperator`. |
+| **GATED** | `LEGAL`, `ENTITY`, `PROOF` | 14–16 | Suppressed at launch. Separate operator gates. |
+| **SELF-SERVICE** | `RETRACTION` | 17 | Owner-initiated. Active at launch. Operator submits on behalf of creator after ownership token verification. |
+| **REVIEW** | `REVIEW`, `VOID`, `AFFIRMED` | 18–20 | AnchorRegistry operator-only. Active at launch. |
+| **BILLING** | `ACCOUNT` | 21 | Prepaid registration capacity. Active at launch. `onlyOperator`. |
+| **CATCH-ALL** | `OTHER` | 22 | Everything else. |
 
 **Gated type activation:**
-- `LEGAL` (13) — opens in V2-V3 with document verification. Owner calls `addLegalOperator()`.
-- `ENTITY` (14) — opens in V2 with domain verification. Owner calls `addEntityOperator()`.
-- `PROOF` (15) — opens in V4 with ZK infrastructure. Owner calls `addProofOperator()`.
+- `LEGAL` (14) — opens in V2-V3 with document verification. Owner calls `addLegalOperator()`.
+- `ENTITY` (15) — opens in V2 with domain verification. Owner calls `addEntityOperator()`.
+- `PROOF` (16) — opens in V4 with ZK infrastructure. Owner calls `addProofOperator()`.
 
 ### AnchorBase
 
@@ -129,9 +140,9 @@ Every anchor type extends `AnchorBase`:
 
 | Field | Description |
 |-------|-------------|
-| `artifactType` | Enum value (0–21) |
+| `artifactType` | Enum value (0–22) |
 | `manifestHash` | SHA-256 of full manifest — the on-chain provenance commitment |
-| `parentHash` | AR-ID of parent anchor, empty if root |
+| `parentArId` | AR-ID of parent anchor, empty if root |
 | `descriptor` | Human-readable slug e.g. `ICMOORE-2026-UNISWAPPY` |
 | `title` | Artifact title e.g. `UniswapPy v1.0` |
 | `author` | Artifact author e.g. `Ian Moore` |
@@ -144,10 +155,10 @@ Four-tier permissioned architecture:
 | Role | Types | Active at Launch |
 |------|-------|-----------------|
 | **Owner** | Governance only — `addOperator`, `removeOperator`, `transferOwnership`, `cancelRecovery` | Yes |
-| **Operator** | Types 0–12, 16–21 | Yes |
-| **Legal Operator** | Type 13 (`LEGAL`) | No — zero operators at deployment |
-| **Entity Operator** | Type 14 (`ENTITY`) | No — zero operators at deployment |
-| **Proof Operator** | Type 15 (`PROOF`) | No — zero operators at deployment |
+| **Operator** | Types 0–13, 17–22 | Yes |
+| **Legal Operator** | Type 14 (`LEGAL`) | No — zero operators at deployment |
+| **Entity Operator** | Type 15 (`ENTITY`) | No — zero operators at deployment |
+| **Proof Operator** | Type 16 (`PROOF`) | No — zero operators at deployment |
 | **Recovery Address** | `initiateRecovery`, `executeRecovery`, `setRecoveryAddress` | Yes |
 
 ### Recovery

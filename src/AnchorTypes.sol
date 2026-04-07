@@ -14,7 +14,7 @@ pragma solidity ^0.8.24;
 // =========================================================================
 
 enum ArtifactType {
-    // ── CONTENT (0-10) ────────────────────────────────────────────────
+    // ── CONTENT (0-11) ────────────────────────────────────────────────
     CODE,        // 0
     RESEARCH,    // 1
     DATA,        // 2
@@ -26,31 +26,33 @@ enum ArtifactType {
     ONCHAIN,     // 8
     REPORT,      // 9
     NOTE,        // 10
+    WEBSITE,     // 11
 
-    // ── LIFECYCLE (11) ────────────────────────────────────────────────
-    EVENT,       // 11
+    // ── LIFECYCLE (12) ────────────────────────────────────────────────
+    EVENT,       // 12
 
-    // ── TRANSACTION (12) ──────────────────────────────────────────────
-    RECEIPT,     // 12
+    // ── TRANSACTION (13) ──────────────────────────────────────────────
+    RECEIPT,     // 13
 
-    // ── GATED (13-15) ─────────────────────────────────────────────────
-    LEGAL,       // 13
-    ENTITY,      // 14
-    PROOF,       // 15
+    // ── GATED (14-16) ─────────────────────────────────────────────────
+    LEGAL,       // 14
+    ENTITY,      // 15
+    PROOF,       // 16
 
-    // ── SELF-SERVICE (16) ─────────────────────────────────────────────
-    RETRACTION,  // 16
+    // ── SELF-SERVICE (17-18) ──────────────────────────────────────────
+    SEAL,        // 17
+    RETRACTION,  // 18
 
-    // ── REVIEW (17-19) ────────────────────────────────────────────────
-    REVIEW,      // 17
-    VOID,        // 18
-    AFFIRMED,    // 19
+    // ── REVIEW (19-21) ────────────────────────────────────────────────
+    REVIEW,      // 19
+    VOID,        // 20
+    AFFIRMED,    // 21
 
-    // ── BILLING (20) ──────────────────────────────────────────────────
-    ACCOUNT,     // 20
+    // ── BILLING (22) ──────────────────────────────────────────────────
+    ACCOUNT,     // 22
 
-    // ── CATCH-ALL (21) ────────────────────────────────────────────────
-    OTHER        // 21
+    // ── CATCH-ALL (23) ────────────────────────────────────────────────
+    OTHER        // 23
 }
 
 // =========================================================================
@@ -60,7 +62,7 @@ enum ArtifactType {
 struct AnchorBase {
     ArtifactType artifactType;
     string manifestHash;  // SHA256 of full manifest (all fields including off-chain)
-    string parentHash;    // AR-ID of parent anchor, empty if root
+    string parentArId;    // AR-ID of parent anchor, empty if root
     string descriptor;    // human-readable e.g. ICMOORE-2026-UNISWAPPY
     string title;         // artifact title e.g. "UniswapPy v1.0"
     string author;        // artifact author e.g. "Ian Moore" or "anonymous"
@@ -68,7 +70,7 @@ struct AnchorBase {
 }
 
 // =========================================================================
-// CONTENT STRUCTS — types 0-10 (kept for ABI reference / off-chain decoding)
+// CONTENT STRUCTS — types 0-11 (kept for ABI reference / off-chain decoding)
 // =========================================================================
 
 /// @notice CODE — repos, packages, commits, scripts.
@@ -123,6 +125,7 @@ struct AgentAnchor {
 struct MediaAnchor {
     AnchorBase base;
     string mediaType;
+    string platform;   // e.g. "YouTube", "SoundCloud", "IPFS"
     string format;
     string duration;
     string isrc;
@@ -132,6 +135,7 @@ struct MediaAnchor {
 /// @notice TEXT — blogs, articles, books, essays.
 struct TextAnchor {
     AnchorBase base;
+    string textType;   // e.g. "BLOG", "BOOK", "ESSAY", "ARTICLE", "WHITEPAPER"
     string isbn;
     string publisher;
     string language;
@@ -169,6 +173,7 @@ struct ReportAnchor {
     string authors;
     string institution;
     string url;
+    string fileManifestHash; // SHA256 of the actual artifact file, empty if no file provided
 }
 
 /// @notice NOTE — memos, meeting notes, correspondence, observations, field notes.
@@ -178,10 +183,21 @@ struct NoteAnchor {
     string date;
     string participants;
     string url;
+    string fileManifestHash; // SHA256 of the actual artifact file, empty if no file provided
+}
+
+/// @notice WEBSITE — canonical domain presence for a project, creator, or entity.
+///         url is the primary identity field. The file hash is a snapshot of the
+///         site at registration time (e.g. SHA256 of rendered HTML or sitemap).
+struct WebsiteAnchor {
+    AnchorBase base;
+    string url;          // canonical domain e.g. https://defipy.org
+    string platform;     // e.g. "Next.js", "WordPress", "Vercel"
+    string description;  // brief description of the site
 }
 
 // =========================================================================
-// LIFECYCLE STRUCT — type 11
+// LIFECYCLE STRUCT — type 12
 // =========================================================================
 
 /// @notice EVENT — dual-use lifecycle anchor for human events and machine/agent processes.
@@ -196,7 +212,7 @@ struct EventAnchor {
 }
 
 // =========================================================================
-// TRANSACTION STRUCT — type 12
+// TRANSACTION STRUCT — type 13
 // =========================================================================
 
 /// @notice RECEIPT — proof of commercial, medical, financial, government, event, or service transactions.
@@ -209,10 +225,11 @@ struct ReceiptAnchor {
     string orderId;
     string platform;
     string url;
+    string fileManifestHash; // SHA256 of the actual artifact file, empty if no file provided
 }
 
 // =========================================================================
-// GATED STRUCTS — types 13-15 (suppressed at launch)
+// GATED STRUCTS — types 14-16 (suppressed at launch)
 // =========================================================================
 
 /// @notice LEGAL — contracts, patents, filings, disclosures.
@@ -251,8 +268,17 @@ struct ProofAnchor {
 }
 
 // =========================================================================
-// SELF-SERVICE STRUCT — type 16
+// SELF-SERVICE STRUCTS — types 17-18
 // =========================================================================
+
+/// @notice SEAL — marks a provenance tree as authentic and complete.
+///         Record preserved in full. No new anchors may be appended.
+///         Key may be safely destroyed after sealing.
+struct SealAnchor {
+    AnchorBase base;
+    string newTreeRoot;
+    string reason;
+}
 
 struct RetractionAnchor {
     AnchorBase base;
@@ -262,7 +288,7 @@ struct RetractionAnchor {
 }
 
 // =========================================================================
-// REVIEW STRUCTS — types 17-19
+// REVIEW STRUCTS — types 19-21
 // =========================================================================
 
 struct ReviewAnchor {
@@ -288,7 +314,7 @@ struct AffirmedAnchor {
 }
 
 // =========================================================================
-// BILLING STRUCT — type 20
+// BILLING STRUCT — type 22
 // =========================================================================
 
 struct AccountAnchor {
@@ -297,7 +323,7 @@ struct AccountAnchor {
 }
 
 // =========================================================================
-// CATCH-ALL STRUCT — type 21
+// CATCH-ALL STRUCT — type 23
 // =========================================================================
 
 struct OtherAnchor {
@@ -306,4 +332,5 @@ struct OtherAnchor {
     string platform;
     string url;
     string value;
+    string fileManifestHash; // SHA256 of the actual artifact file, empty if no file provided
 }

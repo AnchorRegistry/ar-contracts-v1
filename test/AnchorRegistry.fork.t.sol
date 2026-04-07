@@ -64,7 +64,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-code-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-CODE-001",
             title:        "Fork Test Code",
             author:       "fork-tester",
@@ -73,7 +73,7 @@ contract AnchorRegistryForkTest is Test {
         bytes memory extra = abi.encode("abc123commit", "MIT", "Solidity", "v1.0.0", "https://github.com/test");
 
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-CODE-001", base, extra);
+        registry.registerContent("AR-FORK-CODE-001", base, extra, bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-CODE-001"));
         assertEq(uint256(registry.anchorTypes("AR-FORK-CODE-001")), uint256(ArtifactType.CODE));
@@ -87,7 +87,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.RESEARCH,
             manifestHash: "sha256:fork-research-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-RESEARCH-001",
             title:        "Fork Test Paper",
             author:       "fork-tester",
@@ -96,7 +96,7 @@ contract AnchorRegistryForkTest is Test {
         bytes memory extra = abi.encode("10.1234/fork", "MIT", "Dr. Fork", "https://arxiv.org/test");
 
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-RESEARCH-001", base, extra);
+        registry.registerContent("AR-FORK-RESEARCH-001", base, extra, bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-RESEARCH-001"));
         assertEq(uint256(registry.anchorTypes("AR-FORK-RESEARCH-001")), uint256(ArtifactType.RESEARCH));
@@ -110,7 +110,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.MODEL,
             manifestHash: "sha256:fork-model-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-MODEL-001",
             title:        "Fork Test Model",
             author:       "fork-tester",
@@ -119,21 +119,21 @@ contract AnchorRegistryForkTest is Test {
         bytes memory extra = abi.encode("v1.0", "Transformer", "7B", "CommonCrawl", "https://huggingface.co/test");
 
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-MODEL-001", base, extra);
+        registry.registerContent("AR-FORK-MODEL-001", base, extra, bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-MODEL-001"));
         assertEq(uint256(registry.anchorTypes("AR-FORK-MODEL-001")), uint256(ArtifactType.MODEL));
     }
 
     // =====================================================================
-    // 5. REGISTER CONTENT — EVENT (type 11)
+    // 5. REGISTER CONTENT — EVENT (type 12)
     // =====================================================================
 
     function test_Fork_RegisterEvent() public {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.EVENT,
             manifestHash: "sha256:fork-event-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-EVENT-001",
             title:        "Fork Test Conference",
             author:       "fork-tester",
@@ -142,21 +142,21 @@ contract AnchorRegistryForkTest is Test {
         bytes memory extra = abi.encode("HUMAN", "CONFERENCE", "2026-03-23", "Online", "AnchorRegistry", "https://example.com");
 
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-EVENT-001", base, extra);
+        registry.registerContent("AR-FORK-EVENT-001", base, extra, bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-EVENT-001"));
         assertEq(uint256(registry.anchorTypes("AR-FORK-EVENT-001")), uint256(ArtifactType.EVENT));
     }
 
     // =====================================================================
-    // 6. REGISTER CONTENT — RECEIPT (type 12)
+    // 6. REGISTER CONTENT — RECEIPT (type 13)
     // =====================================================================
 
     function test_Fork_RegisterReceipt() public {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.RECEIPT,
             manifestHash: "sha256:fork-receipt-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-RECEIPT-001",
             title:        "Fork Test Purchase",
             author:       "fork-tester",
@@ -165,21 +165,21 @@ contract AnchorRegistryForkTest is Test {
         bytes memory extra = abi.encode("PURCHASE", "TestMerchant", "99.99", "USD", "ORD-001", "stripe", "https://receipt.test");
 
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-RECEIPT-001", base, extra);
+        registry.registerContent("AR-FORK-RECEIPT-001", base, extra, bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-RECEIPT-001"));
         assertEq(uint256(registry.anchorTypes("AR-FORK-RECEIPT-001")), uint256(ArtifactType.RECEIPT));
     }
 
     // =====================================================================
-    // 7. REGISTER CONTENT — ACCOUNT (type 20)
+    // 7. REGISTER CONTENT — ACCOUNT (type 21)
     // =====================================================================
 
     function test_Fork_RegisterAccount() public {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.ACCOUNT,
             manifestHash: "sha256:fork-account-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-TEST-ACCOUNT-001",
             title:        "Fork Test Account",
             author:       "fork-tester",
@@ -188,7 +188,7 @@ contract AnchorRegistryForkTest is Test {
         bytes memory extra = abi.encode(uint256(100));
 
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-ACCOUNT-001", base, extra);
+        registry.registerContent("AR-FORK-ACCOUNT-001", base, extra, bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-ACCOUNT-001"));
         assertEq(uint256(registry.anchorTypes("AR-FORK-ACCOUNT-001")), uint256(ArtifactType.ACCOUNT));
@@ -203,27 +203,27 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory parentBase = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-parent-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-PARENT-001",
             title:        "Parent Code",
             author:       "fork-tester",
             treeId:       "tree-fork-lineage"
         });
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-PARENT-001", parentBase, abi.encode("commit1", "MIT", "Rust", "v1.0", "https://github.com/parent"));
+        registry.registerContent("AR-FORK-PARENT-001", parentBase, abi.encode("commit1", "MIT", "Rust", "v1.0", "https://github.com/parent"), bytes32(uint256(1)));
 
         // Register child pointing to parent
         AnchorBase memory childBase = AnchorBase({
             artifactType: ArtifactType.DATA,
             manifestHash: "sha256:fork-child-001",
-            parentHash:   "AR-FORK-PARENT-001",
+            parentArId:   "AR-FORK-PARENT-001",
             descriptor:   "FORK-CHILD-001",
             title:        "Child Dataset",
             author:       "fork-tester",
             treeId:       "tree-fork-lineage"
         });
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-CHILD-001", childBase, abi.encode("v1.0", "CSV", "1000", "https://schema.test", "https://data.test"));
+        registry.registerContent("AR-FORK-CHILD-001", childBase, abi.encode("v1.0", "CSV", "1000", "https://schema.test", "https://data.test"), bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-PARENT-001"));
         assertTrue(registry.registered("AR-FORK-CHILD-001"));
@@ -238,27 +238,27 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory targetBase = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-retract-target",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-RETRACT-TARGET",
             title:        "Code to Retract",
             author:       "fork-tester",
             treeId:       "tree-fork-retract"
         });
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-RETRACT-TARGET", targetBase, abi.encode("c1", "MIT", "Go", "v1.0", "https://test"));
+        registry.registerContent("AR-FORK-RETRACT-TARGET", targetBase, abi.encode("c1", "MIT", "Go", "v1.0", "https://test"), bytes32(uint256(1)));
 
         // Retract it
         AnchorBase memory retractBase = AnchorBase({
             artifactType: ArtifactType.RETRACTION,
             manifestHash: "sha256:fork-retraction-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-RETRACTION-001",
             title:        "Retraction of target",
             author:       "fork-tester",
             treeId:       "ar-operator-v1"
         });
         vm.prank(operatorPrimary);
-        registry.registerTargeted("AR-FORK-RETRACTION-001", retractBase, "AR-FORK-RETRACT-TARGET", abi.encode("Author requested removal", ""));
+        registry.registerTargeted("AR-FORK-RETRACTION-001", retractBase, "AR-FORK-RETRACT-TARGET", abi.encode("Author requested removal", ""), bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-RETRACTION-001"));
         assertEq(uint256(registry.anchorTypes("AR-FORK-RETRACTION-001")), uint256(ArtifactType.RETRACTION));
@@ -273,53 +273,53 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory targetBase = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-review-target",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-REVIEW-TARGET",
             title:        "Suspicious Code",
             author:       "fork-tester",
             treeId:       "tree-fork-review"
         });
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-REVIEW-TARGET", targetBase, abi.encode("c2", "MIT", "Python", "v0.1", "https://test"));
+        registry.registerContent("AR-FORK-REVIEW-TARGET", targetBase, abi.encode("c2", "MIT", "Python", "v0.1", "https://test"), bytes32(uint256(1)));
 
         // REVIEW
         AnchorBase memory reviewBase = AnchorBase({
             artifactType: ArtifactType.REVIEW,
             manifestHash: "sha256:fork-review-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-REVIEW-001",
             title:        "Review of suspicious code",
             author:       "ar-operator",
             treeId:       "ar-operator-v1"
         });
         vm.prank(operatorPrimary);
-        registry.registerTargeted("AR-FORK-REVIEW-001", reviewBase, "AR-FORK-REVIEW-TARGET", abi.encode("FALSE_AUTHORSHIP", "https://evidence.test"));
+        registry.registerTargeted("AR-FORK-REVIEW-001", reviewBase, "AR-FORK-REVIEW-TARGET", abi.encode("FALSE_AUTHORSHIP", "https://evidence.test"), bytes32(0));
 
         // VOID
         AnchorBase memory voidBase = AnchorBase({
             artifactType: ArtifactType.VOID,
             manifestHash: "sha256:fork-void-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-VOID-001",
             title:        "Void finding",
             author:       "ar-operator",
             treeId:       "ar-operator-v1"
         });
         vm.prank(operatorPrimary);
-        registry.registerTargeted("AR-FORK-VOID-001", voidBase, "AR-FORK-REVIEW-TARGET", abi.encode("AR-FORK-REVIEW-001", "https://finding.test", "Confirmed false authorship"));
+        registry.registerTargeted("AR-FORK-VOID-001", voidBase, "AR-FORK-REVIEW-TARGET", abi.encode("AR-FORK-REVIEW-001", "https://finding.test", "Confirmed false authorship"), bytes32(0));
 
         // AFFIRMED
         AnchorBase memory affirmedBase = AnchorBase({
             artifactType: ArtifactType.AFFIRMED,
             manifestHash: "sha256:fork-affirmed-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-AFFIRMED-001",
             title:        "Affirmed void",
             author:       "ar-operator",
             treeId:       "ar-operator-v1"
         });
         vm.prank(operatorPrimary);
-        registry.registerTargeted("AR-FORK-AFFIRMED-001", affirmedBase, "AR-FORK-VOID-001", abi.encode("INVESTIGATION", "https://affirmed.test"));
+        registry.registerTargeted("AR-FORK-AFFIRMED-001", affirmedBase, "AR-FORK-VOID-001", abi.encode("INVESTIGATION", "https://affirmed.test"), bytes32(0));
 
         assertTrue(registry.registered("AR-FORK-REVIEW-001"));
         assertTrue(registry.registered("AR-FORK-VOID-001"));
@@ -334,7 +334,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-stranger",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-STRANGER",
             title:        "Unauthorized",
             author:       "stranger",
@@ -343,7 +343,7 @@ contract AnchorRegistryForkTest is Test {
 
         vm.prank(address(0xDEAD));
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.NotOperator.selector));
-        registry.registerContent("AR-FORK-STRANGER-001", base, abi.encode("c", "MIT", "JS", "v1", "https://test"));
+        registry.registerContent("AR-FORK-STRANGER-001", base, abi.encode("c", "MIT", "JS", "v1", "https://test"), bytes32(uint256(1)));
     }
 
     // =====================================================================
@@ -354,7 +354,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-dup-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-DUP-001",
             title:        "First registration",
             author:       "fork-tester",
@@ -362,13 +362,13 @@ contract AnchorRegistryForkTest is Test {
         });
 
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-DUP-001", base, abi.encode("c", "MIT", "TS", "v1", "https://test"));
+        registry.registerContent("AR-FORK-DUP-001", base, abi.encode("c", "MIT", "TS", "v1", "https://test"), bytes32(uint256(1)));
 
         // Same arId should revert
         AnchorBase memory base2 = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-dup-002",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-DUP-002",
             title:        "Duplicate attempt",
             author:       "fork-tester",
@@ -377,7 +377,7 @@ contract AnchorRegistryForkTest is Test {
 
         vm.prank(operatorPrimary);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-FORK-DUP-001"));
-        registry.registerContent("AR-FORK-DUP-001", base2, abi.encode("c2", "MIT", "TS", "v2", "https://test2"));
+        registry.registerContent("AR-FORK-DUP-001", base2, abi.encode("c2", "MIT", "TS", "v2", "https://test2"), bytes32(uint256(1)));
     }
 
     // =====================================================================
@@ -388,7 +388,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-badparent",
-            parentHash:   "AR-DOES-NOT-EXIST",
+            parentArId:   "AR-DOES-NOT-EXIST",
             descriptor:   "FORK-BADPARENT",
             title:        "Bad parent ref",
             author:       "fork-tester",
@@ -397,7 +397,7 @@ contract AnchorRegistryForkTest is Test {
 
         vm.prank(operatorPrimary);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidParent.selector, "AR-DOES-NOT-EXIST"));
-        registry.registerContent("AR-FORK-BADPARENT-001", base, abi.encode("c", "MIT", "C", "v1", "https://test"));
+        registry.registerContent("AR-FORK-BADPARENT-001", base, abi.encode("c", "MIT", "C", "v1", "https://test"), bytes32(uint256(1)));
     }
 
     // =====================================================================
@@ -408,7 +408,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.LEGAL,
             manifestHash: "sha256:fork-legal",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-LEGAL",
             title:        "Legal doc",
             author:       "fork-tester",
@@ -417,7 +417,7 @@ contract AnchorRegistryForkTest is Test {
 
         vm.prank(operatorPrimary);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.NotLegalOperator.selector));
-        registry.registerGated("AR-FORK-LEGAL-001", base, abi.encode("PATENT", "US", "Party A", "2026-03-23", "https://test"));
+        registry.registerGated("AR-FORK-LEGAL-001", base, abi.encode("PATENT", "US", "Party A", "2026-03-23", "https://test"), bytes32(uint256(1)));
     }
 
     // =====================================================================
@@ -428,7 +428,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.CODE,
             manifestHash: "sha256:fork-backup-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-BACKUP-001",
             title:        "Backup Op Test",
             author:       "backup-op",
@@ -436,7 +436,7 @@ contract AnchorRegistryForkTest is Test {
         });
 
         vm.prank(operatorBackup);
-        registry.registerContent("AR-FORK-BACKUP-001", base, abi.encode("c", "Apache-2.0", "Rust", "v1", "https://test"));
+        registry.registerContent("AR-FORK-BACKUP-001", base, abi.encode("c", "Apache-2.0", "Rust", "v1", "https://test"), bytes32(uint256(1)));
 
         assertTrue(registry.registered("AR-FORK-BACKUP-001"));
     }
@@ -449,7 +449,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.NOTE,
             manifestHash: "sha256:fork-note-001",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-NOTE-001",
             title:        "Test Note",
             author:       "fork-tester",
@@ -458,7 +458,7 @@ contract AnchorRegistryForkTest is Test {
         bytes memory extra = abi.encode("MEMO", "2026-03-23", "Ian Moore", "https://notes.test");
 
         vm.prank(operatorPrimary);
-        registry.registerContent("AR-FORK-NOTE-001", base, extra);
+        registry.registerContent("AR-FORK-NOTE-001", base, extra, bytes32(uint256(1)));
 
         bytes memory stored = registry.getAnchorData("AR-FORK-NOTE-001");
         (string memory noteType, string memory date, string memory participants, string memory url) =
@@ -478,7 +478,7 @@ contract AnchorRegistryForkTest is Test {
         AnchorBase memory base = AnchorBase({
             artifactType: ArtifactType.ACCOUNT,
             manifestHash: "sha256:fork-account-low",
-            parentHash:   "",
+            parentArId:   "",
             descriptor:   "FORK-ACCOUNT-LOW",
             title:        "Low Capacity",
             author:       "fork-tester",
@@ -487,6 +487,6 @@ contract AnchorRegistryForkTest is Test {
 
         vm.prank(operatorPrimary);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InsufficientCapacity.selector));
-        registry.registerContent("AR-FORK-ACCOUNT-LOW", base, abi.encode(uint256(5)));
+        registry.registerContent("AR-FORK-ACCOUNT-LOW", base, abi.encode(uint256(5)), bytes32(uint256(1)));
     }
 }
