@@ -27,6 +27,17 @@ AnchorRegistry is immutable provenance infrastructure for the AI era. Any creato
 
 ---
 
+## Research
+
+🎓 The cryptographic commitment scheme and security proofs underlying this implementation
+are formally described in:
+
+**Trustless Provenance Trees: A Game-Theoretic Framework for Operator-Gated Blockchain Registries**
+Ian C. Moore — *arXiv:2604.03434 [cs.GT], April 2026*
+🔗 https://arxiv.org/abs/2604.03434
+
+---
+
 ## Live Deployment — Sepolia
 
 AnchorRegistry is deployed and verified on Ethereum Sepolia at [`0x488ab4Aa772Fca36e45e1CB7223f859d2d1CFF36`](https://sepolia.etherscan.io/address/0x488ab4aa772fca36e45e1cb7223f859d2d1cff36). 179 unit tests and 24 fork tests pass against the live contract. See [DEPLOYMENTS.md](DEPLOYMENTS.md) for full details.
