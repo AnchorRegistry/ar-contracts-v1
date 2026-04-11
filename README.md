@@ -4,7 +4,7 @@
 
 AnchorRegistry is immutable provenance infrastructure for the AI era. Any creator can register any digital artifact and receive a permanent, verifiable, on-chain proof of authorship.
 
-**SPDX-Anchor: [anchorregistry.ai/AR-2026-0000001](https://anchorregistry.ai/AR-2026-0000001)**
+**SPDX-Anchor: [anchorregistry.ai/AR-2026-qnPOJ1z](https://anchorregistry.ai/AR-2026-qnPOJ1z)**
 
 > Patent pending — USPTO Provisional Application #64/009,841, filed March 18, 2026.
 
@@ -33,7 +33,8 @@ AnchorRegistry is immutable provenance infrastructure for the AI era. Any creato
 are formally described in:
 
 **Trustless Provenance Trees: A Game-Theoretic Framework for Operator-Gated Blockchain Registries**
-Ian C. Moore — *arXiv:2604.03434 [cs.GT], April 2026*
+Ian C. Moore — *arXiv:2604.03434 [cs.GT, cs.CR], April 2026*
+
 🔗 https://arxiv.org/abs/2604.03434
 
 ---

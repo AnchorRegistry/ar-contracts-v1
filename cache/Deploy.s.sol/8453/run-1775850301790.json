@@ -1,0 +1,13 @@
+{
+  "transactions": [
+    {
+      "rpc": "https://base-mainnet.infura.io/v3/d2d6569915ec402b82c9379d033f8b9b"
+    },
+    {
+      "rpc": "https://base-mainnet.infura.io/v3/d2d6569915ec402b82c9379d033f8b9b"
+    },
+    {
+      "rpc": "https://base-mainnet.infura.io/v3/d2d6569915ec402b82c9379d033f8b9b"
+    }
+  ]
+}
