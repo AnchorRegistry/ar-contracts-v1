@@ -381,24 +381,12 @@ contract AnchorRegistryForkTest is Test {
     }
 
     // =====================================================================
-    // 13. INVALID PARENT BLOCKED
+    // 13. INVALID PARENT (now allowed — V1.1-final)
     // =====================================================================
-
-    function test_Fork_InvalidParent_Blocked() public {
-        AnchorBase memory base = AnchorBase({
-            artifactType: ArtifactType.CODE,
-            manifestHash: "sha256:fork-badparent",
-            parentArId:   "AR-DOES-NOT-EXIST",
-            descriptor:   "FORK-BADPARENT",
-            title:        "Bad parent ref",
-            author:       "fork-tester",
-            treeId:       "tree-fork-badparent"
-        });
-
-        vm.prank(operatorPrimary);
-        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidParent.selector, "AR-DOES-NOT-EXIST"));
-        registry.registerContent("AR-FORK-BADPARENT-001", base, abi.encode("c", "MIT", "C", "v1", "https://test"), bytes32(uint256(1)));
-    }
+    // test_Fork_InvalidParent_Blocked removed. V1.1-final removes the
+    // on-chain parent validation; cross-contract / unknown parents are
+    // now accepted at the contract level. ar-api validates parent
+    // existence off-chain via Supabase before submitting.
 
     // =====================================================================
     // 14. GATED TYPES — STRANGER BLOCKED

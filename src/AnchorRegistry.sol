@@ -119,7 +119,6 @@ contract AnchorRegistry {
     error AlreadyRegistered(string arId);
     error EmptyManifestHash();
     error EmptyArId();
-    error InvalidParent(string parentArId);
     error EmptyTargetArId();
     error InvalidTarget(string targetArId);
     error InvalidArtifactType();
@@ -144,12 +143,10 @@ contract AnchorRegistry {
         _;
     }
 
-    modifier notSealed(string calldata parentArId) {
-        if (bytes(parentArId).length > 0) {
-            if (isSealed[treeRoot[parentArId]]) revert TreeSealed();
-        }
-        _;
-    }
+    // notSealed modifier removed — sealed enforcement is now off-chain.
+    // The contract is a log writer; ar-api validates sealed state via
+    // Supabase before submitting. registerSeal() still self-checks isSealed
+    // to prevent double-sealing.
 
     // =========================================================================
     // CONSTRUCTOR
@@ -284,8 +281,10 @@ contract AnchorRegistry {
         if (bytes(arId).length == 0)              revert EmptyArId();
         if (bytes(base.manifestHash).length == 0) revert EmptyManifestHash();
         if (registered[arId])                     revert AlreadyRegistered(arId);
-        if (bytes(base.parentArId).length > 0 && !registered[base.parentArId])
-                                                  revert InvalidParent(base.parentArId);
+        // Parent validation removed — operator (ar-api) validates parent
+        // existence off-chain via Supabase before submitting. Parent-child
+        // relationships are declared in the Anchored event and reconstructed
+        // by off-chain readers across all contract deployments.
     }
 
     function _register(string calldata arId, AnchorBase calldata base, bytes32 tokenCommitment) internal {
@@ -293,9 +292,15 @@ contract AnchorRegistry {
         anchorTypes[arId] = base.artifactType;
         tokenCommitments[arId] = tokenCommitment;
         if (bytes(base.parentArId).length == 0) {
+            // Root anchor — tree root is itself.
             treeRoot[arId] = arId;
-        } else {
+        } else if (bytes(treeRoot[base.parentArId]).length > 0) {
+            // Parent registered on this contract — inherit its tree root.
             treeRoot[arId] = treeRoot[base.parentArId];
+        } else {
+            // Parent is on a prior contract — operator supplies tree root via
+            // base.treeId. Falls back to self if absent (defensive default).
+            treeRoot[arId] = bytes(base.treeId).length > 0 ? base.treeId : arId;
         }
         emit Anchored(arId, msg.sender, base.artifactType, arId, base.descriptor, base.title, base.author, base.manifestHash, base.parentArId, base.treeId, base.treeId, tokenCommitment);
     }
@@ -323,7 +328,7 @@ contract AnchorRegistry {
         AnchorBase calldata base,
         bytes calldata extra,
         bytes32 tokenCommitment
-    ) external onlyOperator notSealed(base.parentArId) {
+    ) external onlyOperator {
         if (tokenCommitment == bytes32(0)) revert MissingTokenCommitment();
         ArtifactType t = base.artifactType;
         if (t > ArtifactType.RECEIPT && t != ArtifactType.ACCOUNT && t != ArtifactType.OTHER)
@@ -352,7 +357,7 @@ contract AnchorRegistry {
         AnchorBase calldata base,
         bytes calldata extra,
         bytes32 tokenCommitment
-    ) external notSealed(base.parentArId) {
+    ) external {
         if (tokenCommitment == bytes32(0)) revert MissingTokenCommitment();
         ArtifactType t = base.artifactType;
         if (t == ArtifactType.LEGAL) {
@@ -396,8 +401,8 @@ contract AnchorRegistry {
         _validateTarget(targetArId);
 
         if (t == ArtifactType.RETRACTION) {
-            // SEAL blocks new retractions — client cannot retract within a sealed tree
-            if (bytes(base.parentArId).length > 0 && isSealed[treeRoot[base.parentArId]]) revert TreeSealed();
+            // Sealed enforcement removed from contract — operator (ar-api)
+            // checks sealed state via Supabase before submitting retractions.
             if (tokenCommitment == bytes32(0)) revert MissingTokenCommitment();
             (string memory reason, string memory replacedBy) = abi.decode(extra, (string, string));
             _anchorData[arId] = extra;
@@ -462,33 +467,5 @@ contract AnchorRegistry {
         sealContinuation[arId] = newTreeRoot;
 
         emit Sealed(arId, newTreeRoot, reason, block.number, tokenCommitment);
-    }
-
-    // =========================================================================
-    // IMPORT — Cross-contract tree continuity
-    // =========================================================================
-
-    /// @notice Import an anchor from a prior contract deployment.
-    ///         Enables cross-contract tree continuity without bulk migration.
-    ///         Only sets minimum state for _validateBase() and notSealed() to
-    ///         recognize the anchor. Does NOT copy anchorData, anchorTypes,
-    ///         tokenCommitments, or emit Anchored events — the original contract
-    ///         remains the source of truth for those fields.
-    /// @param arId          AR-ID to import (must not already exist on this contract).
-    /// @param treeRootArId  Tree root AR-ID for this anchor's tree.
-    /// @param sealed_       Whether the tree root is sealed on the source contract.
-    function importAnchor(
-        string calldata arId,
-        string calldata treeRootArId,
-        bool sealed_
-    ) external onlyOperator {
-        if (bytes(arId).length == 0)    revert EmptyArId();
-        if (registered[arId])           revert AlreadyRegistered(arId);
-
-        registered[arId] = true;
-        treeRoot[arId]   = treeRootArId;
-        if (sealed_ && !isSealed[treeRootArId]) {
-            isSealed[treeRootArId] = true;
-        }
     }
 }
