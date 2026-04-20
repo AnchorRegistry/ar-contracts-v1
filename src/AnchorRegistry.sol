@@ -425,6 +425,8 @@ contract AnchorRegistry {
             (string memory affirmedBy, string memory findingUrl) = abi.decode(extra, (string, string));
             _anchorData[arId] = extra;
             _register(arId, base, bytes32(0));
+            reviewed[targetArId] = false;   // AFFIRMED clears REVIEW state
+            voided[targetArId]   = false;   // AFFIRMED clears VOID  state
             emit Affirmed(arId, targetArId, affirmedBy);
             // silence unused variable warning
             bytes(findingUrl).length;
@@ -460,5 +462,33 @@ contract AnchorRegistry {
         sealContinuation[arId] = newTreeRoot;
 
         emit Sealed(arId, newTreeRoot, reason, block.number, tokenCommitment);
+    }
+
+    // =========================================================================
+    // IMPORT — Cross-contract tree continuity
+    // =========================================================================
+
+    /// @notice Import an anchor from a prior contract deployment.
+    ///         Enables cross-contract tree continuity without bulk migration.
+    ///         Only sets minimum state for _validateBase() and notSealed() to
+    ///         recognize the anchor. Does NOT copy anchorData, anchorTypes,
+    ///         tokenCommitments, or emit Anchored events — the original contract
+    ///         remains the source of truth for those fields.
+    /// @param arId          AR-ID to import (must not already exist on this contract).
+    /// @param treeRootArId  Tree root AR-ID for this anchor's tree.
+    /// @param sealed_       Whether the tree root is sealed on the source contract.
+    function importAnchor(
+        string calldata arId,
+        string calldata treeRootArId,
+        bool sealed_
+    ) external onlyOperator {
+        if (bytes(arId).length == 0)    revert EmptyArId();
+        if (registered[arId])           revert AlreadyRegistered(arId);
+
+        registered[arId] = true;
+        treeRoot[arId]   = treeRootArId;
+        if (sealed_ && !isSealed[treeRootArId]) {
+            isSealed[treeRootArId] = true;
+        }
     }
 }

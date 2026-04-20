@@ -2885,4 +2885,185 @@ contract AnchorRegistryTest is Test {
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-DOESNT-EXIST"));
         registry.registerSeal("AR-DOESNT-EXIST", "", "reason", bytes32(uint256(0x5EA1)));
     }
+
+    // =========================================================================
+    // 19. Phase 6 — AFFIRMED clears review/void state + importAnchor
+    // =========================================================================
+    //
+    // The existing `_review(reviewId, targetId)` helper pre-registers the
+    // target as CODE, which conflicts with the Phase 6 flow where the target
+    // root is already present. These helpers skip that pre-registration.
+
+    function _p6Root(string memory arId) internal {
+        _code(arId, string(abi.encodePacked("sha256:", arId)));
+    }
+
+    function _p6Review(string memory reviewArId, string memory targetArId) internal {
+        AnchorBase memory b = _base(
+            ArtifactType.REVIEW,
+            string(abi.encodePacked("sha256:review-", reviewArId)),
+            string(abi.encodePacked("REVIEW-", reviewArId))
+        );
+        b.parentArId = targetArId;
+        vm.prank(operator);
+        registry.registerTargeted(
+            reviewArId, b, targetArId,
+            abi.encode("FALSE_AUTHORSHIP", "https://test"),
+            bytes32(0)
+        );
+    }
+
+    function _p6Void(string memory voidArId, string memory targetArId, string memory reviewArId) internal {
+        AnchorBase memory b = _base(
+            ArtifactType.VOID,
+            string(abi.encodePacked("sha256:void-", voidArId)),
+            string(abi.encodePacked("VOID-", voidArId))
+        );
+        b.parentArId = targetArId;
+        vm.prank(operator);
+        registry.registerTargeted(
+            voidArId, b, targetArId,
+            abi.encode(reviewArId, "https://test", "Fraud confirmed"),
+            bytes32(0)
+        );
+    }
+
+    function _p6Affirmed(string memory affirmedArId, string memory targetArId) internal {
+        AnchorBase memory b = _base(
+            ArtifactType.AFFIRMED,
+            string(abi.encodePacked("sha256:aff-", affirmedArId)),
+            string(abi.encodePacked("AFFIRMED-", affirmedArId))
+        );
+        b.parentArId = targetArId;
+        vm.prank(operator);
+        registry.registerTargeted(
+            affirmedArId, b, targetArId,
+            abi.encode("INVESTIGATION", "https://test"),
+            bytes32(0)
+        );
+    }
+
+    // ── 2a: AFFIRMED clears REVIEW state → SEAL succeeds ──────────────────────
+
+    function test_affirmed_clears_review_then_seal() public {
+        _p6Root("AR-2026-AFFIRM1");
+        _p6Review("AR-2026-REVIEW1", "AR-2026-AFFIRM1");
+        assertTrue(registry.reviewed("AR-2026-AFFIRM1"));
+
+        _p6Affirmed("AR-2026-AFFIRM2", "AR-2026-AFFIRM1");
+        assertFalse(registry.reviewed("AR-2026-AFFIRM1"));
+
+        bytes32 tc = keccak256("seal-commitment");
+        vm.prank(operator);
+        registry.registerSeal("AR-2026-AFFIRM1", "", "post-affirm seal", tc);
+        assertTrue(registry.isSealed("AR-2026-AFFIRM1"));
+    }
+
+    // ── 2b: AFFIRMED clears VOID state → SEAL succeeds ────────────────────────
+
+    function test_affirmed_clears_void_then_seal() public {
+        _p6Root("AR-2026-VOID1");
+        _p6Review("AR-2026-REV2", "AR-2026-VOID1");
+        _p6Void("AR-2026-VOID2", "AR-2026-VOID1", "AR-2026-REV2");
+        assertTrue(registry.voided("AR-2026-VOID1"));
+
+        _p6Affirmed("AR-2026-AFF3", "AR-2026-VOID1");
+        assertFalse(registry.voided("AR-2026-VOID1"));
+        // AFFIRMED clears both flags — reviewed was set by _p6Review above.
+        assertFalse(registry.reviewed("AR-2026-VOID1"));
+
+        bytes32 tc = keccak256("seal-after-void-affirm");
+        vm.prank(operator);
+        registry.registerSeal("AR-2026-VOID1", "", "post-void-affirm seal", tc);
+        assertTrue(registry.isSealed("AR-2026-VOID1"));
+    }
+
+    // ── 2c: importAnchor basic lifecycle ──────────────────────────────────────
+
+    function test_importAnchor_basic() public {
+        vm.prank(operator);
+        registry.importAnchor("AR-2026-IMPORT1", "AR-2026-IMPORT1", false);
+
+        assertTrue(registry.registered("AR-2026-IMPORT1"));
+        assertEq(registry.treeRoot("AR-2026-IMPORT1"), "AR-2026-IMPORT1");
+        assertFalse(registry.isSealed("AR-2026-IMPORT1"));
+    }
+
+    // ── 2d: importAnchor with sealed state ────────────────────────────────────
+
+    function test_importAnchor_sealed() public {
+        vm.prank(operator);
+        registry.importAnchor("AR-2026-SEALED1", "AR-2026-SEALED1", true);
+
+        assertTrue(registry.registered("AR-2026-SEALED1"));
+        assertTrue(registry.isSealed("AR-2026-SEALED1"));
+    }
+
+    // ── 2e: importAnchor rejects duplicates ───────────────────────────────────
+
+    function test_importAnchor_revert_duplicate() public {
+        vm.prank(operator);
+        registry.importAnchor("AR-2026-DUP1", "AR-2026-DUP1", false);
+
+        vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.AlreadyRegistered.selector, "AR-2026-DUP1"));
+        registry.importAnchor("AR-2026-DUP1", "AR-2026-DUP1", false);
+    }
+
+    // ── 2f: importAnchor then register child ──────────────────────────────────
+
+    function test_importAnchor_then_child() public {
+        vm.prank(operator);
+        registry.importAnchor("AR-2026-PARENT1", "AR-2026-PARENT1", false);
+
+        AnchorBase memory b = AnchorBase({
+            artifactType: ArtifactType.CODE,
+            manifestHash: "child-hash-001",
+            parentArId:   "AR-2026-PARENT1",
+            descriptor:   "TEST-CHILD",
+            title:        "Child Artifact",
+            author:       "test",
+            treeId:       ""
+        });
+        bytes memory extra = abi.encode("git123", "MIT", "Solidity", "1.0", "");
+        bytes32 tc = keccak256("child-commitment");
+
+        vm.prank(operator);
+        registry.registerContent("AR-2026-CHILD1", b, extra, tc);
+
+        assertTrue(registry.registered("AR-2026-CHILD1"));
+        // Child inherits the imported parent's tree root
+        assertEq(registry.treeRoot("AR-2026-CHILD1"), "AR-2026-PARENT1");
+    }
+
+    // ── 2g: importAnchor sealed prevents child registration ───────────────────
+
+    function test_importAnchor_sealed_blocks_child() public {
+        vm.prank(operator);
+        registry.importAnchor("AR-2026-SROOT", "AR-2026-SROOT", true);
+
+        AnchorBase memory b = AnchorBase({
+            artifactType: ArtifactType.CODE,
+            manifestHash: "sealed-child-hash",
+            parentArId:   "AR-2026-SROOT",
+            descriptor:   "SHOULD-FAIL",
+            title:        "Blocked",
+            author:       "test",
+            treeId:       ""
+        });
+        bytes memory extra = abi.encode("git", "MIT", "Sol", "1.0", "");
+        bytes32 tc = keccak256("blocked");
+
+        vm.prank(operator);
+        vm.expectRevert(AnchorRegistry.TreeSealed.selector);
+        registry.registerContent("AR-2026-BLOCKED", b, extra, tc);
+    }
+
+    // ── 2h: importAnchor onlyOperator ─────────────────────────────────────────
+
+    function test_importAnchor_revert_notOperator() public {
+        vm.prank(address(0xdead));
+        vm.expectRevert(AnchorRegistry.NotOperator.selector);
+        registry.importAnchor("AR-2026-NOAUTH", "AR-2026-NOAUTH", false);
+    }
 }
