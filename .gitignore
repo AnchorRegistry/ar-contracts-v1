@@ -15,3 +15,10 @@ states/
 .env.local
 # Claude Code worktrees
 .claude/worktrees/
+
+# Foundry build output
+cache/
+out/
+
+# Foundry broadcast — keep production deploys, ignore dry runs
+broadcast/*/dry-run/

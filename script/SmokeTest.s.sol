@@ -11,10 +11,10 @@ import "../src/AnchorRegistry.sol";
 /// @notice Operator smoke test — registers one anchor per modified type and
 ///         verifies all new fields round-trip correctly.
 ///
-/// Usage (Sepolia):
+/// Usage (Base Sepolia):
 ///   source .env
 ///   forge script script/SmokeTest.s.sol \
-///     --rpc-url $SEPOLIA_RPC_URL --broadcast -vvvv
+///     --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv
 ///
 /// Usage (local Anvil):
 ///   forge script script/SmokeTest.s.sol \
@@ -131,7 +131,7 @@ contract SmokeTest is Script {
         console.log("  fileManifestHash =", noteFmh, "<- NEW");
 
         // -- 6. RECEIPT — fileManifestHash field --------------------------─
-        console.log("\n-- AR-SMK-RECEIPT (type 12) --");
+        console.log("\n-- AR-SMK-RECEIPT (type 13) --");
         reg.registerContent("AR-SMK-RECEIPT",
             _base(ArtifactType.RECEIPT, "sha256:smk-receipt", "SMK-RECEIPT"),
             abi.encode("PURCHASE", "Wayfair", "1299.99", "CAD",
@@ -147,7 +147,7 @@ contract SmokeTest is Script {
         console.log("  fileManifestHash =", rcpFmh, "<- NEW");
 
         // -- 7. OTHER — fileManifestHash field ----------------------------─
-        console.log("\n-- AR-SMK-OTHER (type 22) --");
+        console.log("\n-- AR-SMK-OTHER (type 23) --");
         reg.registerContent("AR-SMK-OTHER",
             _base(ArtifactType.OTHER, "sha256:smk-other", "SMK-OTHER"),
             abi.encode("course", "Thinkific", "https://thinkific.com/test",
@@ -177,8 +177,8 @@ contract SmokeTest is Script {
         console.log("  platform =", sitePlatform);
         console.log("  desc     =", siteDesc, "<- NEW");
 
-        // -- 9. RETRACTION — tokenCommitment non-zero (type 17) -----------
-        console.log("\n-- AR-SMK-RETRACT (type 17) --");
+        // -- 9. RETRACTION — tokenCommitment non-zero (type 18) -----------
+        console.log("\n-- AR-SMK-RETRACT (type 18) --");
         bytes32 retCommitment = bytes32(uint256(0xdeadbeef));
         AnchorBase memory retBase = _base(ArtifactType.RETRACTION, "sha256:smk-retract", "SMK-RETRACT");
         retBase.parentArId = "AR-SMK-CODE";

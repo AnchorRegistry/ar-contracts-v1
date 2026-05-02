@@ -29,13 +29,13 @@ import "../src/AnchorRegistry.sol";
 ///
 /// @dev Usage:
 ///
-///   Sepolia dry run (Trezor, pattern A):
-///   forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL \
+///   Base Sepolia dry run (Trezor, pattern A):
+///   forge script script/Deploy.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL \
 ///     --ledger --sender $DEPLOYER_ADDRESS -vvvv
 ///
-///   Sepolia broadcast + verify (hot signer, cold owner — pattern B):
+///   Base Sepolia broadcast + verify (hot signer, cold owner — pattern B):
 ///   set -a; source .env; set +a
-///   forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL \
+///   forge script script/Deploy.s.sol --rpc-url $BASE_SEPOLIA_RPC_URL \
 ///     --broadcast --verify -vvvv
 ///
 ///   Local Anvil (pattern C):
@@ -83,7 +83,7 @@ contract Deploy is Script {
         bool willTransfer = (finalOwner != signer);
 
         console.log("=== AnchorRegistry Deployment ===");
-        console.log("Network:          ", block.chainid == 84532 ? "Base Sepolia" : block.chainid == 8453 ? "Base Mainnet" : block.chainid == 11155111 ? "Sepolia" : "Unknown");
+        console.log("Network:          ", block.chainid == 84532 ? "Base Sepolia" : block.chainid == 8453 ? "Base Mainnet" : block.chainid == 11155111 ? "Ethereum Sepolia" : "Unknown");
         console.log("Chain ID:         ", block.chainid);
         console.log("Signer:           ", signer);
         console.log("Recovery address: ", recoveryAddress);
