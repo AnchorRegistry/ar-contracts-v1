@@ -172,7 +172,7 @@ contract AnchorRegistryForkTest is Test {
     }
 
     // =====================================================================
-    // 7. REGISTER CONTENT — ACCOUNT (type 21)
+    // 7. REGISTER CONTENT — ACCOUNT (type 22)
     // =====================================================================
 
     function test_Fork_RegisterAccount() public {
