@@ -5,25 +5,25 @@ import "forge-std/Test.sol";
 import "../src/AnchorRegistry.sol";
 
 /// @title  AnchorRegistryForkTest
-/// @notice Fork tests against the live Sepolia deployment at
-///         0x488ab4Aa772Fca36e45e1CB7223f859d2d1CFF36.
-///         Run with:  forge test --match-contract AnchorRegistryForkTest --fork-url $SEPOLIA_RPC_URL -vv
+/// @notice Fork tests against the live Base Sepolia V1.5 deployment at
+///         0xB0435faA6DeEDC1CB6a809008516fe4F4B094F76.
+///         Run with:  forge test --match-contract AnchorRegistryForkTest --fork-url $BASE_SEPOLIA_RPC_URL -vv
 
 contract AnchorRegistryForkTest is Test {
 
-    AnchorRegistry public registry = AnchorRegistry(0x488ab4Aa772Fca36e45e1CB7223f859d2d1CFF36);
+    AnchorRegistry public registry = AnchorRegistry(0xB0435faA6DeEDC1CB6a809008516fe4F4B094F76);
 
-    address public deployerOwner   = 0x03Cf992A6805e013030956553D06a22DE4bbC5A6;
-    address public recoveryAddr    = 0x3A85B6f755aE31026e6B3B619Bec3ac94Af2970e;
+    address public currentOwner    = 0xb5111bd5fdd104A75B449d064604be5c1e044246;
+    address public recoveryAddr    = 0x9cA6daC5aD0d6B391E3A5c9Fb9bb94dc6875a771;
     address public operatorPrimary = 0xC7a7AFde1177fbF0Bb265Ea5a616d1b8D7eD8c44;
-    address public operatorBackup  = 0xC919F3096cb16Ae2840B50B1b2a211D63f613ef6;
+    address public operatorBackup  = 0xb1547388D9E545396C08f38998D8F620cfDb0a89;
 
     // =====================================================================
     // 1. DEPLOYMENT STATE VERIFICATION
     // =====================================================================
 
     function test_Fork_Owner() public view {
-        assertEq(registry.owner(), deployerOwner);
+        assertEq(registry.owner(), currentOwner);
     }
 
     function test_Fork_RecoveryAddress() public view {
@@ -381,24 +381,12 @@ contract AnchorRegistryForkTest is Test {
     }
 
     // =====================================================================
-    // 13. INVALID PARENT BLOCKED
+    // 13. INVALID PARENT (now allowed — V1.1-final)
     // =====================================================================
-
-    function test_Fork_InvalidParent_Blocked() public {
-        AnchorBase memory base = AnchorBase({
-            artifactType: ArtifactType.CODE,
-            manifestHash: "sha256:fork-badparent",
-            parentArId:   "AR-DOES-NOT-EXIST",
-            descriptor:   "FORK-BADPARENT",
-            title:        "Bad parent ref",
-            author:       "fork-tester",
-            treeId:       "tree-fork-badparent"
-        });
-
-        vm.prank(operatorPrimary);
-        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidParent.selector, "AR-DOES-NOT-EXIST"));
-        registry.registerContent("AR-FORK-BADPARENT-001", base, abi.encode("c", "MIT", "C", "v1", "https://test"), bytes32(uint256(1)));
-    }
+    // test_Fork_InvalidParent_Blocked removed. V1.1-final removes the
+    // on-chain parent validation; cross-contract / unknown parents are
+    // now accepted at the contract level. ar-api validates parent
+    // existence off-chain via Supabase before submitting.
 
     // =====================================================================
     // 14. GATED TYPES — STRANGER BLOCKED

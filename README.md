@@ -39,9 +39,14 @@ Ian C. Moore — *arXiv:2604.03434 [cs.GT, cs.CR], April 2026*
 
 ---
 
-## Live Deployment — Sepolia
+## Live Deployments
 
-AnchorRegistry is deployed and verified on Ethereum Sepolia at [`0x488ab4Aa772Fca36e45e1CB7223f859d2d1CFF36`](https://sepolia.etherscan.io/address/0x488ab4aa772fca36e45e1cb7223f859d2d1cff36). 179 unit tests and 24 fork tests pass against the live contract. See [DEPLOYMENTS.md](DEPLOYMENTS.md) for full details.
+| Network | Contract | Verified |
+|---------|----------|----------|
+| **Base Mainnet** | [`0x3eC509393425BCAa48224FB90C710e100ADA1D2A`](https://basescan.org/address/0x3ec509393425bcaa48224fb90c710e100ada1d2a) | Yes |
+| **Base Sepolia** | [`0xB0435faA6DeEDC1CB6a809008516fe4F4B094F76`](https://sepolia.basescan.org/address/0xb0435faa6deedc1cb6a809008516fe4f4b094f76) | Yes |
+
+212 unit tests pass against current source. See [DEPLOYMENTS.md](DEPLOYMENTS.md) for deployment history and operator addresses.
 
 ---
 
@@ -53,10 +58,10 @@ ar-contracts-v1/
 │   ├── AnchorTypes.sol            # Type definitions — enum, structs, errors
 │   └── AnchorRegistry.sol         # The contract — deployed once, immutable forever
 ├── test/
-│   ├── AnchorRegistry.t.sol       # Full Foundry test suite (179 tests)
-│   └── AnchorRegistry.fork.t.sol  # Fork tests against live Sepolia (24 tests)
+│   ├── AnchorRegistry.t.sol       # Full Foundry test suite (212 tests)
+│   └── AnchorRegistry.fork.t.sol  # Fork tests against live Base Sepolia (23 tests)
 ├── script/
-│   └── Deploy.s.sol               # Deployment script (Sepolia + Base mainnet)
+│   └── Deploy.s.sol               # Deployment script (Base Sepolia + Base Mainnet)
 ├── DEPLOYMENTS.md                 # Live deployment details and test results
 ├── foundry.toml
 ├── .env.example
@@ -82,9 +87,25 @@ forge install foundry-rs/forge-std --no-git
 
 ### Run tests
 
+The suite is split in two:
+
+- **Unit tests** (`AnchorRegistry.t.sol`, 212 tests) — run locally, no RPC needed.
+- **Fork tests** (`AnchorRegistry.fork.t.sol`, 23 tests) — run against the live Base Sepolia deployment, require `--fork-url`.
+
+Run unit tests only (fast, no RPC):
+
 ```bash
-forge test -vvv
+forge test --no-match-contract AnchorRegistryForkTest
 ```
+
+Run fork tests against live Base Sepolia:
+
+```bash
+source .env
+forge test --match-contract AnchorRegistryForkTest --fork-url $BASE_SEPOLIA_RPC_URL -vv
+```
+
+A bare `forge test` will run both suites; without `--fork-url` set, the fork tests will revert against an empty in-memory chain. This is environmental, not a contract failure.
 
 ### Deploy to Base Sepolia (testnet)
 
@@ -95,7 +116,7 @@ cp .env.example .env
 source .env
 
 forge script script/Deploy.s.sol \
-  --rpc-url $SEPOLIA_RPC_URL \
+  --rpc-url $BASE_SEPOLIA_RPC_URL \
   --broadcast \
   --verify \
   -vvvv
@@ -117,7 +138,7 @@ forge script script/Deploy.s.sol \
 
 ### Artifact Types
 
-23 artifact types in 8 logical groups:
+24 artifact types in 8 logical groups:
 
 | Group | Types | Enum | Description |
 |-------|-------|------|-------------|
@@ -125,10 +146,10 @@ forge script script/Deploy.s.sol \
 | **LIFECYCLE** | `EVENT` | 12 | Human events and machine/agent processes. Active at launch. `onlyOperator`. |
 | **TRANSACTION** | `RECEIPT` | 13 | Proof of commercial, medical, financial, government, event, or service transactions. Active at launch. `onlyOperator`. |
 | **GATED** | `LEGAL`, `ENTITY`, `PROOF` | 14–16 | Suppressed at launch. Separate operator gates. |
-| **SELF-SERVICE** | `RETRACTION` | 17 | Owner-initiated. Active at launch. Operator submits on behalf of creator after ownership token verification. |
-| **REVIEW** | `REVIEW`, `VOID`, `AFFIRMED` | 18–20 | AnchorRegistry operator-only. Active at launch. |
-| **BILLING** | `ACCOUNT` | 21 | Prepaid registration capacity. Active at launch. `onlyOperator`. |
-| **CATCH-ALL** | `OTHER` | 22 | Everything else. |
+| **SELF-SERVICE** | `SEAL`, `RETRACTION` | 17–18 | Client-authority anchors. Active at launch. `SEAL` finalizes a tree as authentic and complete — no new anchors may be appended after sealing (AR governance retains the ability to target anchors within sealed trees via REVIEW/VOID/AFFIRMED). `RETRACTION` is owner-initiated self-prune. Both submitted by operator after token-commitment verification; SEAL has its own entry point `registerSeal()`. |
+| **REVIEW** | `REVIEW`, `VOID`, `AFFIRMED` | 19–21 | AnchorRegistry operator-only. Active at launch. |
+| **BILLING** | `ACCOUNT` | 22 | Prepaid registration capacity. Active at launch. `onlyOperator`. |
+| **CATCH-ALL** | `OTHER` | 23 | Everything else. |
 
 **Gated type activation:**
 - `LEGAL` (14) — opens in V2-V3 with document verification. Owner calls `addLegalOperator()`.
@@ -141,7 +162,7 @@ Every anchor type extends `AnchorBase`:
 
 | Field | Description |
 |-------|-------------|
-| `artifactType` | Enum value (0–22) |
+| `artifactType` | Enum value (0–23) |
 | `manifestHash` | SHA-256 of full manifest — the on-chain provenance commitment |
 | `parentArId` | AR-ID of parent anchor, empty if root |
 | `descriptor` | Human-readable slug e.g. `ICMOORE-2026-UNISWAPPY` |
@@ -156,7 +177,7 @@ Four-tier permissioned architecture:
 | Role | Types | Active at Launch |
 |------|-------|-----------------|
 | **Owner** | Governance only — `addOperator`, `removeOperator`, `transferOwnership`, `cancelRecovery` | Yes |
-| **Operator** | Types 0–13, 17–22 | Yes |
+| **Operator** | Types 0–13, 17–23 | Yes |
 | **Legal Operator** | Type 14 (`LEGAL`) | No — zero operators at deployment |
 | **Entity Operator** | Type 15 (`ENTITY`) | No — zero operators at deployment |
 | **Proof Operator** | Type 16 (`PROOF`) | No — zero operators at deployment |
@@ -174,7 +195,7 @@ The complete registry is reconstructable from Ethereum event logs alone. Every `
 
 ## foundry.toml
 
-`via_ir = true` is required due to stack depth in `registerEntity()` (EntityAnchor has 7 string fields):
+`via_ir = true` is required due to stack depth in the unified register entry points (`registerContent`, `registerGated`, `registerTargeted`, `registerSeal`), which decode ABI-encoded type-specific payloads into local memory:
 
 ```toml
 [profile.default]

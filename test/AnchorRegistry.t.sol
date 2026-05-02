@@ -1558,15 +1558,11 @@ contract AnchorRegistryTest is Test {
         assertEq(cap, 1000);
     }
 
-    function test_Account_InvalidParent_Reverts() public {
-        AnchorBase memory b = _base(
-            ArtifactType.ACCOUNT, "sha256:acc05", "ACCOUNT-BADPARENT"
-        );
-        b.parentArId = "AR-DOESNOTEXIST";
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidParent.selector, "AR-DOESNOTEXIST"));
-        registry.registerContent("AR-ACC05", b, abi.encode(uint256(25)), bytes32(uint256(1)));
-    }
+    // test_Account_InvalidParent_Reverts removed — V1.1-final no longer
+    // performs on-chain parent validation. Operator validates parent
+    // existence off-chain via Supabase before submitting. See
+    // test_registerContent_crossContractParent for the positive case
+    // that was previously rejected.
 
     function test_Account_AlreadyRegistered_Reverts() public {
         vm.prank(operator);
@@ -1738,13 +1734,10 @@ contract AnchorRegistryTest is Test {
             bytes32(uint256(1)));
     }
 
-    function test_InvalidParentHash_Reverts() public {
-        vm.prank(operator);
-        vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidParent.selector, "AR-DOESNOTEXIST"));
-        registry.registerContent("AR-CHILD01", _child("sha256:child01", "AR-DOESNOTEXIST"),
-            abi.encode("git:child", "MIT", "Python", "v1.0.0", "https://test"),
-            bytes32(uint256(1)));
-    }
+    // test_InvalidParentHash_Reverts removed — see V1.1-final note in
+    // test_Account_InvalidParent_Reverts above. Cross-contract / off-chain
+    // parents are now allowed; positive case in
+    // test_registerContent_crossContractParent.
 
     // =========================================================================
     // 14. TREE INTEGRITY
@@ -2627,58 +2620,12 @@ contract AnchorRegistryTest is Test {
         registry.registerSeal("AR-SEAL-TC", "", "reason", bytes32(0));
     }
 
-    function test_Seal_BlocksNewContentAnchor() public {
-        _code("AR-SEAL-BLK", "sha256:sealblk");
-        _code("AR-SEAL-CHILD1", "sha256:child1");
-        // Register child1 under root before sealing (to have a child in tree)
-        // Actually, let's register a proper tree first
-        vm.prank(operator);
-        registry.registerContent(
-            "AR-SEAL-CHILD2",
-            _child("sha256:child2", "AR-SEAL-BLK"),
-            abi.encode("git:x", "MIT", "Rust", "v1.0", ""),
-            bytes32(uint256(1))
-        );
-        _seal("AR-SEAL-BLK");
-        // Now try to add a new child — should revert
-        vm.prank(operator);
-        vm.expectRevert(AnchorRegistry.TreeSealed.selector);
-        registry.registerContent(
-            "AR-SEAL-CHILD3",
-            _child("sha256:child3", "AR-SEAL-BLK"),
-            abi.encode("git:y", "MIT", "Rust", "v1.0", ""),
-            bytes32(uint256(1))
-        );
-    }
-
-    function test_Seal_BlocksNewGatedAnchor() public {
-        _code("AR-SEAL-GATED", "sha256:sealgated");
-        _seal("AR-SEAL-GATED");
-        vm.prank(owner);
-        registry.addLegalOperator(legalOp);
-        AnchorBase memory b = _base(ArtifactType.LEGAL, "sha256:legalseal", "LEGAL-SEAL");
-        b.parentArId = "AR-SEAL-GATED";
-        vm.prank(legalOp);
-        vm.expectRevert(AnchorRegistry.TreeSealed.selector);
-        registry.registerGated("AR-SEAL-LEGAL", b, abi.encode("contract", "https://legal.test"), bytes32(uint256(1)));
-    }
-
-    function test_Seal_BlocksRetraction() public {
-        _code("AR-SEAL-RTGT", "sha256:sealrtgt");
-        vm.prank(operator);
-        registry.registerContent(
-            "AR-SEAL-RCHILD",
-            _child("sha256:rchild", "AR-SEAL-RTGT"),
-            abi.encode("git:z", "MIT", "Rust", "v1.0", ""),
-            bytes32(uint256(1))
-        );
-        _seal("AR-SEAL-RTGT");
-        AnchorBase memory b = _base(ArtifactType.RETRACTION, "sha256:sealret", "RETRACT-SEALED");
-        b.parentArId = "AR-SEAL-RCHILD";
-        vm.prank(operator);
-        vm.expectRevert(AnchorRegistry.TreeSealed.selector);
-        registry.registerTargeted("AR-SEAL-RET", b, "AR-SEAL-RCHILD", abi.encode("reason", ""), bytes32(uint256(1)));
-    }
+    // test_Seal_BlocksNewContentAnchor / test_Seal_BlocksNewGatedAnchor /
+    // test_Seal_BlocksRetraction removed — V1.1-final removes the notSealed()
+    // modifier and the RETRACTION sealed-tree check. Sealed-tree enforcement
+    // moved off-chain to ar-api (which checks Supabase before submitting).
+    // The replacement positive test, test_registerContent_sealedTreeNoLongerBlocked,
+    // lives in section 19 (Phase 6 / V1.1-final).
 
     function test_Seal_BlockedUnderReview() public {
         _code("AR-SEAL-REV", "sha256:sealrev");
@@ -2884,5 +2831,157 @@ contract AnchorRegistryTest is Test {
         vm.prank(operator);
         vm.expectRevert(abi.encodeWithSelector(AnchorRegistry.InvalidTarget.selector, "AR-DOESNT-EXIST"));
         registry.registerSeal("AR-DOESNT-EXIST", "", "reason", bytes32(uint256(0x5EA1)));
+    }
+
+    // =========================================================================
+    // 19. Phase 6 — AFFIRMED clears review/void state + importAnchor
+    // =========================================================================
+    //
+    // The existing `_review(reviewId, targetId)` helper pre-registers the
+    // target as CODE, which conflicts with the Phase 6 flow where the target
+    // root is already present. These helpers skip that pre-registration.
+
+    function _p6Root(string memory arId) internal {
+        _code(arId, string(abi.encodePacked("sha256:", arId)));
+    }
+
+    function _p6Review(string memory reviewArId, string memory targetArId) internal {
+        AnchorBase memory b = _base(
+            ArtifactType.REVIEW,
+            string(abi.encodePacked("sha256:review-", reviewArId)),
+            string(abi.encodePacked("REVIEW-", reviewArId))
+        );
+        b.parentArId = targetArId;
+        vm.prank(operator);
+        registry.registerTargeted(
+            reviewArId, b, targetArId,
+            abi.encode("FALSE_AUTHORSHIP", "https://test"),
+            bytes32(0)
+        );
+    }
+
+    function _p6Void(string memory voidArId, string memory targetArId, string memory reviewArId) internal {
+        AnchorBase memory b = _base(
+            ArtifactType.VOID,
+            string(abi.encodePacked("sha256:void-", voidArId)),
+            string(abi.encodePacked("VOID-", voidArId))
+        );
+        b.parentArId = targetArId;
+        vm.prank(operator);
+        registry.registerTargeted(
+            voidArId, b, targetArId,
+            abi.encode(reviewArId, "https://test", "Fraud confirmed"),
+            bytes32(0)
+        );
+    }
+
+    function _p6Affirmed(string memory affirmedArId, string memory targetArId) internal {
+        AnchorBase memory b = _base(
+            ArtifactType.AFFIRMED,
+            string(abi.encodePacked("sha256:aff-", affirmedArId)),
+            string(abi.encodePacked("AFFIRMED-", affirmedArId))
+        );
+        b.parentArId = targetArId;
+        vm.prank(operator);
+        registry.registerTargeted(
+            affirmedArId, b, targetArId,
+            abi.encode("INVESTIGATION", "https://test"),
+            bytes32(0)
+        );
+    }
+
+    // ── 2a: AFFIRMED clears REVIEW state → SEAL succeeds ──────────────────────
+
+    function test_affirmed_clears_review_then_seal() public {
+        _p6Root("AR-2026-AFFIRM1");
+        _p6Review("AR-2026-REVIEW1", "AR-2026-AFFIRM1");
+        assertTrue(registry.reviewed("AR-2026-AFFIRM1"));
+
+        _p6Affirmed("AR-2026-AFFIRM2", "AR-2026-AFFIRM1");
+        assertFalse(registry.reviewed("AR-2026-AFFIRM1"));
+
+        bytes32 tc = keccak256("seal-commitment");
+        vm.prank(operator);
+        registry.registerSeal("AR-2026-AFFIRM1", "", "post-affirm seal", tc);
+        assertTrue(registry.isSealed("AR-2026-AFFIRM1"));
+    }
+
+    // ── 2b: AFFIRMED clears VOID state → SEAL succeeds ────────────────────────
+
+    function test_affirmed_clears_void_then_seal() public {
+        _p6Root("AR-2026-VOID1");
+        _p6Review("AR-2026-REV2", "AR-2026-VOID1");
+        _p6Void("AR-2026-VOID2", "AR-2026-VOID1", "AR-2026-REV2");
+        assertTrue(registry.voided("AR-2026-VOID1"));
+
+        _p6Affirmed("AR-2026-AFF3", "AR-2026-VOID1");
+        assertFalse(registry.voided("AR-2026-VOID1"));
+        // AFFIRMED clears both flags — reviewed was set by _p6Review above.
+        assertFalse(registry.reviewed("AR-2026-VOID1"));
+
+        bytes32 tc = keccak256("seal-after-void-affirm");
+        vm.prank(operator);
+        registry.registerSeal("AR-2026-VOID1", "", "post-void-affirm seal", tc);
+        assertTrue(registry.isSealed("AR-2026-VOID1"));
+    }
+
+    // ── 2c (V1.1-final): cross-contract parent ────────────────────────────────
+    //
+    // V1.1-final removes parent validation from _validateBase — operator
+    // (ar-api) validates parent existence off-chain via Supabase. A child
+    // whose parent isn't on this contract should now register successfully,
+    // with treeRoot taken from base.treeId (the operator-supplied tree root
+    // resolved off-chain).
+
+    function test_registerContent_crossContractParent() public {
+        AnchorBase memory base = AnchorBase({
+            artifactType: ArtifactType.CODE,
+            manifestHash: "cross-contract-hash",
+            parentArId:   "AR-2026-OLD",       // never registered on this contract
+            descriptor:   "CROSS-CONTRACT",
+            title:        "Cross Contract Child",
+            author:       "test",
+            treeId:       "AR-2026-OLD"        // operator passes prior-contract tree root
+        });
+        bytes memory extra = abi.encode("git", "MIT", "Sol", "1.0", "");
+        bytes32 tc = keccak256("cross-contract");
+
+        vm.prank(operator);
+        registry.registerContent("AR-2026-CHILD1", base, extra, tc);
+
+        assertTrue(registry.registered("AR-2026-CHILD1"));
+        // treeRoot falls through to base.treeId because the parent isn't
+        // resident on this contract.
+        assertEq(registry.treeRoot("AR-2026-CHILD1"), "AR-2026-OLD");
+    }
+
+    // ── 2d (V1.1-final): sealed enforcement is off-chain now ──────────────────
+    //
+    // notSealed() modifier removed; registerContent against a sealed-tree
+    // parent succeeds at the contract level. ar-api enforces this via Supabase.
+
+    function test_registerContent_sealedTreeNoLongerBlocked() public {
+        _code("AR-2026-SEALROOT", "sha256:sealroot");
+
+        bytes32 tc = keccak256("seal-commitment");
+        vm.prank(operator);
+        registry.registerSeal("AR-2026-SEALROOT", "", "sealed", tc);
+        assertTrue(registry.isSealed("AR-2026-SEALROOT"));
+
+        AnchorBase memory base = AnchorBase({
+            artifactType: ArtifactType.CODE,
+            manifestHash: "under-sealed-hash",
+            parentArId:   "AR-2026-SEALROOT",
+            descriptor:   "UNDER-SEALED",
+            title:        "Under Sealed Tree",
+            author:       "test",
+            treeId:       ""
+        });
+        bytes memory extra = abi.encode("git", "MIT", "Sol", "1.0", "");
+        bytes32 tc2 = keccak256("under-sealed");
+
+        vm.prank(operator);
+        registry.registerContent("AR-2026-UNDERSEAL", base, extra, tc2);
+        assertTrue(registry.registered("AR-2026-UNDERSEAL"));
     }
 }
